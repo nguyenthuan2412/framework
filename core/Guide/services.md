@@ -1,11 +1,11 @@
-# Use Core Services
+# Sử dụng các Service có sẵn của Core
 
 ## Dependency Injection
 ```php
-// Resolve from container
+// Lấy từ container
 $service = App::service(SomeClass::class);
 
-// Or via constructor injection (in controllers/services)
+// Hoặc inject qua constructor (trong controller/service)
 public function __construct(
     private SomeServiceInterface $service
 ) {}
@@ -13,30 +13,30 @@ public function __construct(
 
 ## Snowflake ID
 ```php
-$id = Snowflake::id(); // Generate unique distributed ID
+$id = Snowflake::id(); // Sinh ID duy nhất, dùng được cho hệ thống phân tán
 ```
 
 ## Hashing
 ```php
-$hash = Hash::make($password);           // Hash password
-$check = Hash::check($password, $hash);  // Verify password
+$hash = Hash::make($password);           // Băm mật khẩu
+$check = Hash::check($password, $hash);  // Kiểm tra mật khẩu
 ```
 
-## Event System
+## Event
 ```php
-// Dispatch event
+// Phát event
 Event::dispatch(new UserRegistered($user));
 
-// Listen (via EventServiceProvider)
+// Lắng nghe event (qua EventServiceProvider)
 Event::listen(UserRegistered::class, SendWelcomeEmailListener::class);
 ```
 
-## Caching (Redis)
+## Cache (Redis)
 ```php
-Cache::set('key', $value, 3600);    // Store for 1 hour
-Cache::get('key');                   // Retrieve
-Cache::delete('key');                // Delete
-Cache::remember('key', 3600, fn() => db query); // Cache with fallback
+Cache::set('key', $value, 3600);    // Lưu trong 1 giờ
+Cache::get('key');                   // Đọc
+Cache::delete('key');                // Xoá
+Cache::remember('key', 3600, fn() => db query); // Có cache thì đọc, chưa có thì chạy hàm rồi lưu
 ```
 
 ## Redis
@@ -46,35 +46,37 @@ $redis->set('key', 'value');
 $redis->get('key');
 ```
 
-## Logging
+## Ghi log
 ```php
 Log::info('User created', ['id' => $id]);
 Log::error('Something failed', ['exception' => $e]);
 Log::warning('Deprecated method used');
 ```
 
-## Mail
+## Gửi mail
 ```php
-Mail::send($email); // Send email (configured via config/mail.php)
+Mail::send($email); // Gửi email (cấu hình trong config/mail.php)
 ```
 
 ## Queue / Messenger
 ```php
-// Dispatch async job
+// Đẩy job chạy bất đồng bộ
 Messenger::dispatch(new SendEmailJob($data));
 
-// Or with delay
+// Hoặc chạy trễ (tính bằng giây)
 Messenger::dispatch(new SendEmailJob($data))->delay(3600);
 ```
 
-## Context (Current user/business)
+Để xử lý job trong queue, chạy worker: `php ryra messenger:consume`.
+
+## Context (người dùng / doanh nghiệp hiện tại)
 ```php
-Context::get('user.user_id');       // Current authenticated user ID
-Context::get('user.business_id');   // Current business ID
-Context::get('user.role');          // Current user role
+Context::get('user.user_id');       // ID người dùng đang đăng nhập
+Context::get('user.business_id');   // ID doanh nghiệp hiện tại
+Context::get('user.role');          // Vai trò của người dùng
 ```
 
-## Key points
-- All core services are accessible via facades
-- Constructor injection is preferred in controllers/services
-- Context provides access to the current authenticated user and business
+## Ghi nhớ
+- Mọi service của core đều dùng được qua facade
+- Trong controller/service nên ưu tiên inject qua constructor
+- `Context` dùng để lấy thông tin người dùng và doanh nghiệp của request hiện tại

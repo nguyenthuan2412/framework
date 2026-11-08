@@ -1,14 +1,22 @@
-# Create a Controller
+# Tạo Controller
 
-## Overview
+## Tổng quan
 
-Controllers handle incoming HTTP requests and return responses. In Ryra, controllers use **PHP 8 attributes** to define routes, middleware, and metadata — keeping routing declarative and close to the handler logic.
+Controller nhận HTTP request và trả về response. Trong Ryra, controller dùng **PHP 8 attributes** để khai báo route, middleware và thông tin mô tả. Nhờ vậy route được khai báo ngay cạnh code xử lý, không cần file route riêng.
+
+Tạo nhanh controller bằng lệnh:
+
+```bash
+php ryra gen:controller User --module=user
+```
+
+Lệnh tạo file `modules/user/src/Controllers/UserController.php` (prefix mặc định `api/users`) và tự đăng ký vào `user.module.php`.
 
 ---
 
-## 1. `#[Group]` — Class-level route group
+## 1. `#[Group]`: nhóm route cho cả class
 
-Applied to the controller class. Defines a common prefix and shared middleware for all routes inside the controller.
+Đặt trên class controller. Khai báo prefix chung và middleware dùng chung cho mọi route trong controller.
 
 ```php
 use Ryra\Core\Route\Attributes\Group;
@@ -27,22 +35,22 @@ class SomeController
 }
 ```
 
-### Parameters
+### Tham số
 
-| Parameter | Type | Default | Description |
+| Tham số | Kiểu | Mặc định | Mô tả |
 |-----------|------|---------|-------------|
-| `prefix` | `string` | `''` | URL prefix prepended to every route URI in the controller. Leading/trailing slashes are trimmed automatically. |
-| `name` | `?string` | `null` | Optional route group name, useful for route naming and URL generation. |
-| `description` | `?string` | `null` | Description of the route group, used in API documentation generation. |
-| `deprecated` | `bool` | `false` | Marks all routes in the group as deprecated in API docs. |
-| `middlewares` | `array` | `[]` | List of middleware classes applied to **every** route in this controller. |
-| `excludedMiddlewares` | `array` | `[]` | List of middleware classes to **exclude** from routes in this group (useful when a global middleware should be skipped). |
+| `prefix` | `string` | `''` | Tiền tố URL gắn vào trước mọi route trong controller. Dấu `/` ở đầu và cuối được tự cắt bỏ. |
+| `name` | `?string` | `null` | Tên nhóm route (tuỳ chọn), dùng để đặt tên route và sinh URL. |
+| `description` | `?string` | `null` | Mô tả nhóm route, dùng khi sinh tài liệu API. |
+| `deprecated` | `bool` | `false` | Đánh dấu mọi route trong nhóm là đã lỗi thời (deprecated) trong tài liệu API. |
+| `middlewares` | `array` | `[]` | Danh sách middleware áp dụng cho **mọi** route trong controller. |
+| `excludedMiddlewares` | `array` | `[]` | Danh sách middleware **bỏ qua** cho các route trong nhóm (hữu ích khi muốn bỏ một middleware toàn cục). |
 
 ---
 
-## 2. HTTP Method Attributes — Method-level route definition
+## 2. Attribute theo HTTP method: khai báo route trên từng method
 
-All HTTP method attributes (`Get`, `Post`, `Put`, `Delete`, `Patch`, `Head`) extend the same base class and share the same parameters.
+Các attribute `Get`, `Post`, `Put`, `Delete`, `Patch`, `Head` cùng kế thừa một class cha và có chung bộ tham số.
 
 ### `#[Get]`
 
@@ -132,23 +140,23 @@ use Ryra\Core\Route\Attributes\Head;
 public function head(int $id): JsonResponse
 ```
 
-### Shared Parameters (Get, Post, Put, Delete, Patch, Head)
+### Tham số chung (Get, Post, Put, Delete, Patch, Head)
 
-| Parameter | Type | Default | Description |
+| Tham số | Kiểu | Mặc định | Mô tả |
 |-----------|------|---------|-------------|
-| `uri` | `string` | *(required)* | URI path relative to the group prefix. Supports `{param}` and `{param:regex}` patterns for route parameters. Use `'/'` or `''` for the root of the group prefix. |
-| `name` | `?string` | `null` | Route name for named route generation and reverse routing. |
-| `summary` | `?string` | `null` | Short summary of the endpoint, used in API documentation (e.g., Swagger/OpenAPI). |
-| `description` | `?string` | `null` | Detailed description of the endpoint's behavior, used in API docs. |
-| `deprecated` | `bool` | `false` | Marks the endpoint as deprecated in API docs. |
-| `middlewares` | `array` | `[]` | Middleware classes applied **only** to this specific route. Merged with group-level middleware. |
-| `excludedMiddlewares` | `array` | `[]` | Middleware classes to exclude from this specific route (overrides group/applied middleware). |
+| `uri` | `string` | *(bắt buộc)* | Đường dẫn tính từ prefix của group. Hỗ trợ tham số dạng `{param}` và `{param:regex}`. Dùng `'/'` hoặc `''` cho chính đường dẫn prefix. |
+| `name` | `?string` | `null` | Tên route, dùng để sinh URL từ tên route. |
+| `summary` | `?string` | `null` | Tóm tắt ngắn về endpoint, hiển thị trong tài liệu API (Swagger/OpenAPI). |
+| `description` | `?string` | `null` | Mô tả chi tiết endpoint, hiển thị trong tài liệu API. |
+| `deprecated` | `bool` | `false` | Đánh dấu endpoint đã lỗi thời trong tài liệu API. |
+| `middlewares` | `array` | `[]` | Middleware áp dụng **chỉ** cho route này. Được gộp với middleware của group. |
+| `excludedMiddlewares` | `array` | `[]` | Middleware bỏ qua cho route này (ghi đè middleware của group hoặc toàn cục). |
 
 ---
 
-## 3. `#[Route]` — Custom HTTP methods attribute
+## 3. `#[Route]`: một route nhận nhiều HTTP method
 
-When you need to handle **multiple HTTP methods** on a single endpoint, use `#[Route]` instead of the specific method attributes.
+Khi một endpoint cần nhận **nhiều HTTP method**, dùng `#[Route]` thay cho các attribute riêng lẻ.
 
 ```php
 use Ryra\Core\Route\Attributes\Route;
@@ -166,22 +174,22 @@ use Ryra\Core\Route\Attributes\Route;
 public function options(int $id): JsonResponse
 ```
 
-### Parameters
+### Tham số
 
-| Parameter | Type | Default | Description |
+| Tham số | Kiểu | Mặc định | Mô tả |
 |-----------|------|---------|-------------|
-| `methods` | `string\|array` | *(required)* | One or more HTTP methods this route responds to. Can be a string like `'GET'` or an array like `['GET', 'POST']`. |
-| `uri` | `string` | *(required)* | URI path relative to the group prefix. Same pattern support as other attributes. |
-| `name` | `?string` | `null` | Route name for named route generation. |
-| `summary` | `?string` | `null` | Short summary for API documentation. |
-| `description` | `?string` | `null` | Detailed description for API documentation. |
-| `deprecated` | `bool` | `false` | Marks the endpoint as deprecated. |
-| `middlewares` | `array` | `[]` | Middleware classes for this route. |
-| `excludedMiddlewares` | `array` | `[]` | Middleware classes to exclude from this route. |
+| `methods` | `string\|array` | *(bắt buộc)* | Một hoặc nhiều HTTP method mà route nhận. Có thể là chuỗi `'GET'` hoặc mảng `['GET', 'POST']`. |
+| `uri` | `string` | *(bắt buộc)* | Đường dẫn tính từ prefix của group, cú pháp giống các attribute khác. |
+| `name` | `?string` | `null` | Tên route. |
+| `summary` | `?string` | `null` | Tóm tắt ngắn cho tài liệu API. |
+| `description` | `?string` | `null` | Mô tả chi tiết cho tài liệu API. |
+| `deprecated` | `bool` | `false` | Đánh dấu endpoint đã lỗi thời. |
+| `middlewares` | `array` | `[]` | Middleware cho route này. |
+| `excludedMiddlewares` | `array` | `[]` | Middleware bỏ qua cho route này. |
 
 ---
 
-## 4. Complete Example
+## 4. Ví dụ đầy đủ
 
 ```php
 <?php
@@ -260,14 +268,14 @@ class ResourceController
 
 ---
 
-## 5. Key Points
+## 5. Ghi nhớ
 
-- Use **PHP 8 attributes** for routing: `#[Get]`, `#[Post]`, `#[Put]`, `#[Delete]`, `#[Patch]`, `#[Head]`, `#[Route]`
-- Group routes with `#[Group(prefix: '...', middlewares: [...])]`
-- URI supports `{param}` and `{param:regex}` patterns (e.g., `{id:\d+}`)
-- Constructor injection for service interfaces
-- Return `JsonResponse` via `Response::json()`
-- DTOs are auto-validated from request body/query
-- Model binding in route params (e.g., `Customer $customer`)
-- Middleware stacks merge: group-level → method-level, with `excludedMiddlewares` filtering
-- API documentation metadata (`summary`, `description`, `deprecated`) is auto-extracted for Swagger/OpenAPI generation
+- Khai báo route bằng **PHP 8 attributes**: `#[Get]`, `#[Post]`, `#[Put]`, `#[Delete]`, `#[Patch]`, `#[Head]`, `#[Route]`
+- Nhóm route bằng `#[Group(prefix: '...', middlewares: [...])]`
+- URI hỗ trợ tham số `{param}` và `{param:regex}` (ví dụ `{id:\d+}`)
+- Inject service qua constructor
+- Trả JSON bằng `Response::json()`, trả HTML bằng `Response::view()`
+- DTO khai báo trong tham số method được tự validate từ body/query của request
+- Tự nạp model từ tham số route (ví dụ `Customer $customer` với route `{customer}`)
+- Middleware được gộp theo thứ tự: group → method, sau đó lọc bỏ theo `excludedMiddlewares`
+- Các thông tin `summary`, `description`, `deprecated` được tự đọc để sinh tài liệu Swagger/OpenAPI

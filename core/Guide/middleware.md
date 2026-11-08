@@ -1,60 +1,62 @@
-# Create Middleware
+# Tạo Middleware
 
-## Generate middleware via command
+## Sinh middleware bằng lệnh
 
-You can quickly scaffold a middleware class using the built-in generator:
+Bạn có thể tạo nhanh một class middleware bằng lệnh có sẵn:
 
 ```bash
 php ryra gen:middleware --module=user EnsureTokenIsValid
 ```
 
-This creates a middleware class at `modules/user/src/Middlewares/EnsureTokenIsValid.php` with the basic structure ready for you to implement.
+Lệnh này tạo file `modules/user/src/Middlewares/EnsureTokenIsValidMiddleware.php` (class `EnsureTokenIsValidMiddleware`) với cấu trúc cơ bản, bạn chỉ cần viết logic.
 
-The command accepts the following options:
+Các tuỳ chọn của lệnh:
 
-| Option | Description |
-|--------|-------------|
-| `--module` | The module the middleware belongs to (required) |
-| `-f` / `--force` | Overwrite the file if it already exists |
+| Tuỳ chọn | Mô tả |
+|----------|-------|
+| `--module` | Module chứa middleware (bắt buộc) |
+| `-f` / `--force` | Ghi đè nếu file đã tồn tại |
 
-The generator automatically strips the `Middleware` suffix if you include it, so both `EnsureTokenIsValid` and `EnsureTokenIsValidMiddleware` produce the same file.
+Lệnh luôn thêm hậu tố `Middleware` vào tên class. Nếu bạn đã gõ sẵn hậu tố thì lệnh không thêm lần nữa, nên `EnsureTokenIsValid` và `EnsureTokenIsValidMiddleware` đều tạo ra cùng một file.
 
-## Basic structure
+> Middleware tạo bằng lệnh **không** được tự đăng ký vào đâu cả. Bạn tự gắn nó theo một trong bốn cách ở mục "Cách sử dụng".
+
+## Cấu trúc cơ bản
 
 ```php
 <?php
 
 namespace Ryra\Modules\{ModuleName}\Middlewares;
 
+use Closure;
 use Ryra\Core\Http\Request;
 use Ryra\Core\Http\Response;
-use Ryra\Core\Middleware\MiddlewareInterface;
 
-class EnsureTokenIsValid implements MiddlewareInterface
+class EnsureTokenIsValidMiddleware
 {
-    public function handle(Request $request, callable $next): Response
+    public function handle(Request $request, Closure $next): Response
     {
-        // Logic before controller execution
-        // e.g., check permissions, modify request, etc.
+        // Xử lý trước khi vào controller
+        // ví dụ: kiểm tra quyền, chỉnh sửa request, ...
 
-        // Continue to next middleware / controller
+        // Chuyển sang middleware tiếp theo / controller
         $response = $next($request);
 
-        // Logic after controller execution
-        // e.g., modify response, add headers, etc.
+        // Xử lý sau khi controller chạy xong
+        // ví dụ: sửa response, thêm header, ...
 
         return $response;
     }
 }
 ```
 
-## Usage
+## Cách sử dụng
 
-Middleware can be registered at **four different levels**, depending on how broadly you want it to apply:
+Middleware có thể đăng ký ở **bốn cấp độ**, tuỳ phạm vi bạn muốn áp dụng:
 
-### 1. Global — `ryra` file
+### 1. Toàn cục — file `ryra`
 
-Register middleware in the [`ryra`](/ryra:23) entry file via `withMiddleware()` to apply it to **every request** across the entire application:
+Đăng ký trong file chạy chính [`ryra`](../../ryra) qua `withMiddleware()` để áp dụng cho **mọi request** của ứng dụng:
 
 ```php
 // ryra
@@ -64,14 +66,14 @@ Register middleware in the [`ryra`](/ryra:23) entry file via `withMiddleware()` 
         HandleException::class,
         TrimStrings::class,
         ConvertEmptyStringsToNull::class,
-        EnsureTokenIsValid::class,
+        EnsureTokenIsValidMiddleware::class,
     ]);
 })
 ```
 
-### 2. Module-wide — `.module.php` file
+### 2. Toàn module — file `.module.php`
 
-Add a `middlewares` key in the module's `.module.php` config file to apply middleware to **all routes** within that module:
+Thêm khoá `middlewares` vào file `.module.php` của module để áp dụng cho **mọi route** trong module đó:
 
 ```php
 // modules/user/user.module.php
@@ -87,44 +89,44 @@ return [
     ],
 
     'middlewares' => [
-        EnsureTokenIsValid::class,
+        EnsureTokenIsValidMiddleware::class,
     ],
 ];
 ```
 
-The module manager picks up this key and registers each middleware to the module via [`MiddlewareServiceProvider`](/core/Middleware/MiddlewareServiceProvider.php:22).
+Module manager đọc khoá này và đăng ký từng middleware cho module qua [`MiddlewareServiceProvider`](../Middleware/MiddlewareServiceProvider.php#L22).
 
-### 3. Group — `#[Group]` attribute
+### 3. Nhóm route — attribute `#[Group]`
 
-Attach middleware to a group of routes via the [`#[Group]`](/core/Route/Attributes/Group.php:12) attribute on a controller class:
+Gắn middleware cho cả nhóm route bằng attribute [`#[Group]`](../Route/Attributes/Group.php#L12) đặt trên class controller:
 
 ```php
 use Ryra\Core\Route\Attributes\Group;
 
-#[Group(prefix: 'api/admin', middlewares: [AuthMiddleware::class, EnsureTokenIsValid::class])]
+#[Group(prefix: 'api/admin', middlewares: [AuthMiddleware::class, EnsureTokenIsValidMiddleware::class])]
 class AdminController
 {
     // ...
 }
 ```
 
-### 4. Single route — `#[Route]` attribute
+### 4. Một route — attribute `#[Route]`
 
-Attach middleware to an individual route via the [`#[Route]`](/core/Route/Attributes/Route.php:12) attribute on a controller method:
+Gắn middleware cho riêng một route bằng attribute [`#[Route]`](../Route/Attributes/Route.php#L12) (hoặc `#[Get]`, `#[Post]`, ...) đặt trên method của controller:
 
 ```php
 use Ryra\Core\Route\Attributes\Route;
 
-#[Route(methods: ['POST'], uri: '/login', middlewares: [EnsureTokenIsValid::class])]
+#[Route(methods: ['POST'], uri: '/login', middlewares: [EnsureTokenIsValidMiddleware::class])]
 public function login(Request $request): Response
 {
     // ...
 }
 ```
 
-### Excluding middleware
+### Loại trừ middleware
 
-Both `#[Group]` and `#[Route]` support an `excludedMiddlewares` parameter to exclude specific middleware at a more granular level:
+Cả `#[Group]` và `#[Route]` đều có tham số `excludedMiddlewares` để bỏ bớt middleware ở cấp chi tiết hơn:
 
 ```php
 #[Group(prefix: 'api/admin', middlewares: [AuthMiddleware::class, LogRequest::class], excludedMiddlewares: [LogRequest::class])]
@@ -134,21 +136,21 @@ class PublicController
 }
 ```
 
-## Execution order
+## Thứ tự thực thi
 
-Middleware runs in the following order (outermost first):
+Middleware chạy theo thứ tự sau (lớp ngoài cùng chạy trước):
 
-1. **Global** — registered in `ryra` via `withMiddleware()`
-2. **Module** — registered in `.module.php` under the `middlewares` key
-3. **Group** — registered via `#[Group(middlewares: [...])]`
-4. **Route** — registered via `#[Route(middlewares: [...])]`
+1. **Toàn cục**: đăng ký trong `ryra` qua `withMiddleware()`
+2. **Module**: đăng ký trong `.module.php`, khoá `middlewares`
+3. **Nhóm**: đăng ký qua `#[Group(middlewares: [...])]`
+4. **Route**: đăng ký qua `#[Route(middlewares: [...])]`
 
-Each level passes the request to the next via `$next($request)`, so the **Route-level middleware runs closest to the controller**.
+Mỗi cấp chuyển request cho cấp tiếp theo qua `$next($request)`, nên **middleware cấp route chạy gần controller nhất**.
 
-## Key points
+## Ghi nhớ
 
-- Implements [`MiddlewareInterface`](/core/Middleware/MiddlewareInterface.php)
-- `$next($request)` passes control to the next middleware or controller
-- Can modify request before and response after
-- Multiple middlewares can be stacked at each level
-- Use `excludedMiddlewares` to opt out of inherited middleware at group or route level
+- Là class thường (không cần implement interface), có method `handle(Request $request, Closure $next)`. Xem ví dụ thật trong [core/Middleware/](../Middleware/)
+- `$next($request)` chuyển quyền xử lý cho middleware tiếp theo hoặc controller
+- Có thể sửa request trước khi chuyển đi và sửa response sau khi nhận về
+- Mỗi cấp có thể khai báo nhiều middleware
+- Dùng `excludedMiddlewares` để bỏ middleware được kế thừa ở cấp group hoặc route

@@ -1,6 +1,6 @@
-# Create a Model
+# Tạo Model
 
-## Basic structure
+## Cấu trúc cơ bản
 ```php
 <?php
 
@@ -29,40 +29,40 @@ class Customer extends Model
 }
 ```
 
-## Relationships
+## Quan hệ (Relationships)
 ```php
-// BelongsTo
+// BelongsTo (thuộc về)
 public function user(): BelongsTo
 {
     return $this->belongsTo(User::class, 'user_id');
 }
 
-// HasMany
+// HasMany (có nhiều)
 public function bookings(): HasMany
 {
     return $this->hasMany(Booking::class, 'customer_id');
 }
 
-// HasOne
+// HasOne (có một)
 public function profile(): HasOne
 {
     return $this->hasOne(Profile::class, 'customer_id');
 }
 ```
 
-## Attributes & Mutators
+## Accessor & Mutator
 ```php
 use Ryra\Core\Database\Model\Attributes\Mutator;
 use Ryra\Core\Database\Model\Attributes\Accessor;
 
-// Mutator (modifies value before saving)
+// Mutator (biến đổi giá trị trước khi lưu)
 #[Mutator]
 protected function hashPassword(string $value): string
 {
     return Hash::make($value);
 }
 
-// Accessor (modifies value after retrieving)
+// Accessor (biến đổi giá trị sau khi đọc ra)
 #[Accessor]
 protected function fullName(): string
 {
@@ -70,7 +70,7 @@ protected function fullName(): string
 }
 ```
 
-## Soft Deletes
+## Xoá mềm (Soft Deletes)
 ```php
 use Ryra\Core\Database\Model\Traits\SoftDeletes;
 
@@ -81,8 +81,8 @@ class Customer extends Model
 }
 ```
 
-## Key points
-- Extends `Ryra\Core\Database\Model\Model`
-- Snowflake IDs are non-incrementing (`$incrementing = false`)
-- Supports `#[Mutator]`, `#[Event]`, `#[Accessor]` attributes
-- Soft deletes via `SoftDeletes` trait
+## Ghi nhớ
+- Kế thừa `Ryra\Core\Database\Model\Model`
+- ID dạng Snowflake không tự tăng, nên đặt `$incrementing = false`
+- Hỗ trợ các attribute `#[Mutator]`, `#[Event]`, `#[Accessor]`
+- Xoá mềm bằng trait `SoftDeletes`

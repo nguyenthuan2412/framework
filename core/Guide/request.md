@@ -1,26 +1,26 @@
-# Request — Usage Guide in Controller
+# Request: cách dùng trong Controller
 
-## Overview
+## Tổng quan
 
-[`Request`](core/Http/Request.php) is the central class for retrieving data from HTTP requests in Ryra. It wraps the underlying Swoole request and provides a convenient API to read:
+[`Request`](../Http/Request.php) là class chính để lấy dữ liệu từ HTTP request trong Ryra. Nó bọc request gốc của Swoole và cung cấp các hàm tiện lợi để đọc:
 
-- **Query parameters** (`?key=value`)
-- **Body parameters** (JSON, form-data, x-www-form-urlencoded)
+- **Tham số query** (`?key=value`)
+- **Dữ liệu body** (JSON, form-data, x-www-form-urlencoded)
 - **Headers**
 - **Cookies**
-- **File uploads**
-- **Server variables**
+- **File upload**
+- **Biến server**
 - **Session**
 
-The Request is automatically injected into controller methods when declared as a type-hinted parameter.
+Chỉ cần khai báo tham số kiểu `Request` trong method của controller, framework sẽ tự inject.
 
 ---
 
-## 1. Injecting Request into Controller
+## 1. Inject Request vào Controller
 
-### 1.1. Basic Form
+### 1.1. Cách cơ bản
 
-Declare [`Request`](core/Http/Request.php) as a method parameter — the framework injects it automatically:
+Khai báo [`Request`](../Http/Request.php) làm tham số của method, framework tự truyền vào:
 
 ```php
 use Ryra\Core\Http\Request;
@@ -36,7 +36,7 @@ class BookController
     #[Get(uri: '/', summary: 'List books')]
     public function index(Request $request): JsonResponse
     {
-        // $request is ready to use
+        // $request đã sẵn sàng để dùng
         $keyword = $request->input('keyword', '');
         $page    = $request->integer('page', 1);
 
@@ -45,9 +45,9 @@ class BookController
 }
 ```
 
-### 1.2. Combining with Route Parameters
+### 1.2. Kết hợp với tham số route
 
-Request can coexist with route parameters:
+Request có thể dùng chung với tham số route:
 
 ```php
 #[Put(uri: '{id:\d+}', summary: 'Update book')]
@@ -58,16 +58,16 @@ public function update(int $id, Request $request): JsonResponse
 }
 ```
 
-### 1.3. Combining with DTO (Validation)
+### 1.3. Kết hợp với DTO (validate)
 
-When using DTO, the request can still be injected separately if you need access to additional data not included in the DTO:
+Khi dùng DTO, bạn vẫn có thể inject thêm Request nếu cần đọc dữ liệu không nằm trong DTO:
 
 ```php
 #[Post(uri: '/', summary: 'Create book')]
 public function store(CreateBookDTO $dto, Request $request): JsonResponse
 {
-    // $dto contains validated data
-    // $request is used to retrieve additional auxiliary data
+    // $dto chứa dữ liệu đã validate
+    // $request dùng để lấy thêm dữ liệu phụ
     $ip = $request->ip();
     // ...
 }
@@ -75,26 +75,26 @@ public function store(CreateBookDTO $dto, Request $request): JsonResponse
 
 ---
 
-## 2. Reading Input Parameters
+## 2. Đọc dữ liệu đầu vào
 
-### 2.1. `input()` — Get any value (query + body)
+### 2.1. `input()`: lấy giá trị bất kỳ (query + body)
 
-Searches the request body first, then falls back to the query string:
+Tìm trong body trước, không có thì tìm trong query string:
 
 ```php
-$name    = $request->input('name');          // 'John' or null
-$name    = $request->input('name', 'Guest'); // 'John' or 'Guest' (default)
-$nested  = $request->input('user.address.city'); // Dot notation for nested
+$name    = $request->input('name');          // 'John' hoặc null
+$name    = $request->input('name', 'Guest'); // 'John' hoặc 'Guest' (mặc định)
+$nested  = $request->input('user.address.city'); // Dùng dấu chấm để lấy dữ liệu lồng nhau
 ```
 
-### 2.2. `query()` — Read from query string only
+### 2.2. `query()`: chỉ đọc từ query string
 
 ```php
 $page = $request->query('page');     // ?page=2 → '2'
 $sort = $request->query('sort', 'asc');
 ```
 
-### 2.3. `all()` — All input (query + body + files)
+### 2.3. `all()`: toàn bộ dữ liệu (query + body + file)
 
 ```php
 $data = $request->all();
@@ -105,51 +105,51 @@ $data = $request->all();
 // ]
 ```
 
-### 2.4. `has()` — Check if key exists
+### 2.4. `has()`: kiểm tra key có tồn tại
 
 ```php
 if ($request->has('email')) {
-    // email exists in request (body, query, or files)
+    // có email trong request (body, query hoặc file)
 }
 
 if ($request->has(['name', 'email'])) {
-    // All keys exist
+    // có đủ tất cả các key
 }
 ```
 
-### 2.5. `__get()` — Magic property access
+### 2.5. `__get()`: đọc như thuộc tính
 
 ```php
-$name = $request->name; // Equivalent to $request->input('name')
+$name = $request->name; // Tương đương $request->input('name')
 $email = $request->email;
 ```
 
 ---
 
-## 3. Type Casting Helpers
+## 3. Các hàm ép kiểu
 
-### 3.1. `string()` — Returns [`Stringable`](core/Support/Str.php)
+### 3.1. `string()`: trả về [`Stringable`](../Support/Str.php)
 
 ```php
 $name = $request->string('name', '');
-// $name is a Stringable object, methods can be chained
+// $name là đối tượng Stringable, có thể gọi nối tiếp các method
 $slug = $request->string('title')->slug()->lower();
 ```
 
-### 3.2. `integer()` — Cast to int
+### 3.2. `integer()`: ép về int
 
 ```php
 $age  = $request->integer('age', 0);     // int
 $page = $request->integer('page', 1);
 ```
 
-### 3.3. `float()` — Cast to float
+### 3.3. `float()`: ép về float
 
 ```php
 $price = $request->float('price', 0.0);
 ```
 
-### 3.4. `boolean()` — Cast to bool
+### 3.4. `boolean()`: ép về bool
 
 ```php
 $active = $request->boolean('is_active', false);
@@ -157,32 +157,32 @@ $active = $request->boolean('is_active', false);
 // "0", "false", "off", "no", "" → false
 ```
 
-### 3.5. `date()` — Parse dates
+### 3.5. `date()`: đọc ngày tháng
 
 ```php
 use DateTimeInterface;
 
 $startDate = $request->date('start_date');
-// Returns DateTimeInterface or null
+// Trả về DateTimeInterface hoặc null
 
 $customFormat = $request->date('start_date', 'Y-m-d');
-// Parse with specific format
+// Đọc theo định dạng cụ thể
 ```
 
-### 3.6. `enum()` — Backed Enum from input
+### 3.6. `enum()`: lấy Backed Enum từ input
 
 ```php
 use App\Enums\Status;
 
 $status = $request->enum('status', Status::class);
-// ?Status — returns enum instance or null
+// ?Status: trả về enum hoặc null
 ```
 
 ---
 
-## 4. Reading Headers
+## 4. Đọc header
 
-### 4.1. `header()` — Get header value
+### 4.1. `header()`: lấy giá trị header
 
 ```php
 $token     = $request->header('Authorization');
@@ -190,7 +190,7 @@ $userAgent = $request->header('User-Agent', 'Unknown');
 $lang      = $request->header('Accept-Language');
 ```
 
-### 4.2. `hasHeader()` — Check header existence
+### 4.2. `hasHeader()`: kiểm tra header có tồn tại
 
 ```php
 if ($request->hasHeader('X-Request-Id')) {
@@ -198,41 +198,41 @@ if ($request->hasHeader('X-Request-Id')) {
 }
 ```
 
-### 4.3. `bearerToken()` — Get Bearer token
+### 4.3. `bearerToken()`: lấy Bearer token
 
 ```php
 $token = $request->bearerToken();
 // Authorization: Bearer abc123 → 'abc123'
-// Returns null if not present
+// Trả về null nếu không có
 ```
 
-### 4.4. `userAgent()` — User-Agent shortcut
+### 4.4. `userAgent()`: lấy nhanh User-Agent
 
 ```php
-$ua = $request->userAgent(); // Equivalent to $request->header('User-Agent')
+$ua = $request->userAgent(); // Tương đương $request->header('User-Agent')
 ```
 
-### 4.5. `isJson()` / `wantsJson()` — Check content type / accept
+### 4.5. `isJson()` / `wantsJson()`: kiểm tra Content-Type / Accept
 
 ```php
 if ($request->isJson()) {
-    // Content-Type is application/json
+    // Content-Type là application/json
 }
 
 if ($request->wantsJson()) {
-    // Accept header prefers JSON
+    // Header Accept ưu tiên JSON
 }
 ```
 
-### 4.6. `accepts()` — Check Accept header
+### 4.6. `accepts()`: kiểm tra header Accept
 
 ```php
 if ($request->accepts('application/json')) {
-    // Client accepts JSON
+    // Client chấp nhận JSON
 }
 
 if ($request->accepts(['application/json', 'text/html'])) {
-    // Client accepts one of the formats
+    // Client chấp nhận một trong các định dạng
 }
 ```
 
@@ -247,9 +247,9 @@ $hasCookie = $request->hasCookie('remember_token');
 
 ---
 
-## 6. File Uploads
+## 6. File upload
 
-### 6.1. `file()` — Get uploaded file
+### 6.1. `file()`: lấy file upload
 
 ```php
 use Ryra\Core\Http\File\UploadedFile;
@@ -265,17 +265,17 @@ if ($avatar) {
 }
 ```
 
-### 6.2. Check if file exists
+### 6.2. Kiểm tra có file hay không
 
 ```php
 if ($request->has('avatar')) {
-    // File 'avatar' exists in the request
+    // Request có file 'avatar'
 }
 ```
 
 ---
 
-## 7. HTTP Method & URL
+## 7. HTTP method & URL
 
 ### 7.1. `method()` / `isMethod()`
 
@@ -283,7 +283,7 @@ if ($request->has('avatar')) {
 $method = $request->method(); // 'GET', 'POST', ...
 
 if ($request->isMethod('post')) {
-    // Is a POST request
+    // Là request POST
 }
 
 if ($request->isMethodSafe()) {
@@ -295,18 +295,18 @@ if ($request->isMethodCacheable()) {
 }
 ```
 
-### 7.2. URL Methods
+### 7.2. Các hàm về URL
 
 ```php
 $uri     = $request->uri();          // /api/books?page=1 → '/api/books'
 $url     = $request->url();          // https://example.com/api/books
 $fullUrl = $request->fullUrl();      // https://example.com/api/books?page=1
 
-// Create new URL with query parameters
+// Tạo URL mới kèm tham số query
 $newUrl  = $request->fullUrlWithQuery(['page' => 2]);
 // https://example.com/api/books?page=2
 
-// Check URL pattern
+// Kiểm tra URL theo mẫu
 if ($request->is('api/books/*')) { ... }
 if ($request->fullUrlIs('*page=*')) { ... }
 ```
@@ -314,7 +314,7 @@ if ($request->fullUrlIs('*page=*')) { ... }
 ### 7.3. Schema (HTTP/HTTPS)
 
 ```php
-$schema = $request->schema(); // 'https' or 'http'
+$schema = $request->schema(); // 'https' hoặc 'http'
 $secure = $request->isSecure();
 ```
 
@@ -327,11 +327,11 @@ $port = $request->port();    // 443, 80, ...
 
 ---
 
-## 8. Client IP
+## 8. IP của client
 
 ```php
 $ip  = $request->ip();         // '192.168.1.1'
-$ips = $request->ips();        // ['192.168.1.1', ...] — IP chain if behind proxy
+$ips = $request->ips();        // ['192.168.1.1', ...]: chuỗi IP khi đi qua proxy
 $ip  = $request->getClientIp();
 ```
 
@@ -349,25 +349,25 @@ if ($request->hasSession()) {
 
 ---
 
-## 10. Content Negotiation
+## 10. Thương lượng nội dung (Content Negotiation)
 
-### 10.1. Language
+### 10.1. Ngôn ngữ
 
 ```php
 $languages = $request->getLanguages();
-// ['vi', 'en', ...] in priority order from Accept-Language
+// ['vi', 'en', ...] theo thứ tự ưu tiên trong Accept-Language
 
 $preferred = $request->getPreferredLanguage(['vi', 'en', 'ja']);
-// 'vi' — the best matching language from the supported list
+// 'vi': ngôn ngữ khớp nhất trong danh sách hỗ trợ
 ```
 
-### 10.2. Content Types
+### 10.2. Kiểu nội dung
 
 ```php
 $types = $request->getAcceptableContentTypes();
 // ['application/json', 'text/html', ...]
 
-$format = $request->getRequestFormat(); // 'html' (default)
+$format = $request->getRequestFormat(); // 'html' (mặc định)
 ```
 
 ---
@@ -389,37 +389,37 @@ if ($request->pjax()) {
 ## 12. ETags & Cache
 
 ```php
-$etags = $request->getETags(); // From If-None-Match header
+$etags = $request->getETags(); // Lấy từ header If-None-Match
 
 if ($request->isNoCache()) {
-    // Cache-Control: no-cache or Pragma: no-cache
+    // Cache-Control: no-cache hoặc Pragma: no-cache
 }
 ```
 
 ---
 
-## 13. Accessing the Underlying Swoole Request
+## 13. Truy cập request gốc của Swoole
 
-When you need to access the Swoole request object:
+Khi cần dùng trực tiếp đối tượng request của Swoole:
 
 ```php
 $swooleRequest = $request->getSwooleRequest();
-$fd = $request->fd; // File descriptor (TCP connection)
+$fd = $request->fd; // File descriptor (kết nối TCP)
 ```
 
 ---
 
-## 14. Current Route
+## 14. Route hiện tại
 
 ```php
 $route = $request->route(); // ?Route
-// Or
+// Hoặc
 $route = $request->getRoute();
 ```
 
 ---
 
-## 15. Complete Example
+## 15. Ví dụ đầy đủ
 
 ```php
 <?php
@@ -453,13 +453,13 @@ class BookController
     #[Get(uri: '/', summary: 'List books')]
     public function index(Request $request): JsonResponse
     {
-        // Read query parameters with type casting
+        // Đọc tham số query kèm ép kiểu
         $keyword = $request->string('keyword', '');
         $page    = $request->integer('page', 1);
         $perPage = min(50, $request->integer('per_page', 10));
         $status  = $request->enum('status', BookStatus::class);
 
-        // Check if client wants JSON
+        // Kiểm tra client có muốn nhận JSON không
         if ($request->wantsJson()) {
             $books = $this->bookService->paginate($keyword, $page, $perPage, $status);
             return Response::json([
@@ -468,14 +468,14 @@ class BookController
             ]);
         }
 
-        // Return HTML if not JSON
+        // Không phải JSON thì trả lỗi định dạng
         return Response::json(['message' => 'Unsupported format'], 406);
     }
 
     #[Post(uri: '/', summary: 'Create new book')]
     public function store(UpsertBookDTO $dto, Request $request): JsonResponse
     {
-        // DTO is validated automatically, request is used to get additional info
+        // DTO đã được tự validate, request dùng để lấy thêm thông tin
         $createdBy = $request->input('created_by', auth()->id());
 
         $book = $this->bookService->create($dto, $createdBy);
@@ -519,7 +519,7 @@ class BookController
     #[Post(uri: '{book:\d+}/cover', summary: 'Upload cover image')]
     public function uploadCover(Book $book, Request $request): JsonResponse
     {
-        // Handle file upload
+        // Xử lý file upload
         $file = $request->file('cover');
 
         if (!$file) {
@@ -528,7 +528,7 @@ class BookController
             ], 400);
         }
 
-        // Validate file type
+        // Kiểm tra loại file
         $allowedMimes = ['image/jpeg', 'image/png', 'image/webp'];
         if (!in_array($file->getMimeType(), $allowedMimes)) {
             return Response::json([
@@ -536,7 +536,7 @@ class BookController
             ], 422);
         }
 
-        // Upload and save
+        // Upload và lưu
         $path = $file->store('books/covers');
         $book->cover_url = $path;
         $book->save();
@@ -550,14 +550,14 @@ class BookController
     #[Get(uri: 'stats', summary: 'Book statistics')]
     public function stats(Request $request): JsonResponse
     {
-        // Use multiple Request methods in a single action
+        // Dùng nhiều hàm của Request trong cùng một action
         $filters = [
             'from'  => $request->date('from'),
             'to'    => $request->date('to'),
             'genre' => $request->input('genre'),
         ];
 
-        // Get client info
+        // Lấy thống kê
         $stats = $this->bookService->getStats($filters);
 
         return Response::json([
@@ -572,33 +572,33 @@ class BookController
 
 ---
 
-## 16. Quick Method Comparison
+## 16. Bảng so sánh nhanh
 
-| Method | Data Source | Return Type | Notes |
+| Hàm | Nguồn dữ liệu | Kiểu trả về | Ghi chú |
 |--------|-------------|-------------|-------|
-| `input(key, default)` | Body → Query | `mixed` | Searches body first, falls back to query |
-| `query(key)` | Query string | `mixed` | Only `?key=value` |
-| `all()` | Body + Query + Files | `array` | Merges all |
-| `string(key, default)` | Body → Query | `Stringable` | Chainable string object |
-| `integer(key, default)` | Body → Query | `int` | Casts to int |
-| `float(key, default)` | Body → Query | `float` | Casts to float |
-| `boolean(key, default)` | Body → Query | `bool` | Casts to bool |
-| `date(key, format?)` | Body → Query | `?DateTimeInterface` | Parses dates |
+| `input(key, default)` | Body → Query | `mixed` | Tìm trong body trước, không có thì tìm trong query |
+| `query(key)` | Query string | `mixed` | Chỉ `?key=value` |
+| `all()` | Body + Query + Files | `array` | Gộp tất cả |
+| `string(key, default)` | Body → Query | `Stringable` | Đối tượng chuỗi, gọi nối tiếp được |
+| `integer(key, default)` | Body → Query | `int` | Ép về int |
+| `float(key, default)` | Body → Query | `float` | Ép về float |
+| `boolean(key, default)` | Body → Query | `bool` | Ép về bool |
+| `date(key, format?)` | Body → Query | `?DateTimeInterface` | Đọc ngày tháng |
 | `enum(key, class)` | Body → Query | `?BackedEnum` | Backed Enum |
 | `header(key, default)` | Headers | `mixed` | HTTP headers |
-| `bearerToken()` | Authorization header | `?string` | Token after "Bearer " |
-| `cookie(key, default)` | Cookies | `mixed` | Request cookies |
-| `file(key)` | Uploaded files | `?UploadedFile` | File upload |
-| `has(key)` | Body + Query + Files | `bool` | Checks existence |
+| `bearerToken()` | Authorization header | `?string` | Phần token sau "Bearer " |
+| `cookie(key, default)` | Cookies | `mixed` | Cookie của request |
+| `file(key)` | File upload | `?UploadedFile` | File upload |
+| `has(key)` | Body + Query + Files | `bool` | Kiểm tra tồn tại |
 | `method()` | Server | `string` | HTTP method |
 | `uri()` | Server | `string` | URI path |
-| `url()` | Server | `string` | Full URL (without query) |
-| `fullUrl()` | Server | `string` | Full URL (with query) |
-| `ip()` | Server/Proxy | `string` | Client IP |
-| `schema()` | Server/Proxy | `string` | `https` or `http` |
-| `isSecure()` | Server/Proxy | `bool` | SSL/TLS? |
-| `ajax()` | Headers | `bool` | XMLHttpRequest? |
-| `wantsJson()` | Accept header | `bool` | Client wants JSON? |
-| `isJson()` | Content-Type | `bool` | Request body is JSON? |
+| `url()` | Server | `string` | URL đầy đủ (không kèm query) |
+| `fullUrl()` | Server | `string` | URL đầy đủ (kèm query) |
+| `ip()` | Server/Proxy | `string` | IP của client |
+| `schema()` | Server/Proxy | `string` | `https` hoặc `http` |
+| `isSecure()` | Server/Proxy | `bool` | Có dùng SSL/TLS không? |
+| `ajax()` | Headers | `bool` | Có phải XMLHttpRequest không? |
+| `wantsJson()` | Accept header | `bool` | Client muốn nhận JSON? |
+| `isJson()` | Content-Type | `bool` | Body của request là JSON? |
 | `session()` | Session | `?Session` | Session instance |
-| `route()` | Route | `?Route` | Current route |
+| `route()` | Route | `?Route` | Route hiện tại |

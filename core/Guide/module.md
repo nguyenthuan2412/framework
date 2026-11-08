@@ -1,27 +1,27 @@
-# Create a Module
+# Tạo Module
 
-You can quickly generate a new module using the built-in command:
+Cách nhanh nhất để tạo module mới là dùng lệnh có sẵn:
 
 ```bash
-php ryra gen:module {module_name}
+php ryra gen:module {ten_module}
 ```
 
-For example, to create a `user` module:
+Ví dụ tạo module `user`:
 
 ```bash
 php ryra gen:module user
 ```
 
-This command will automatically scaffold the directory structure, module manifest, and service provider for you.
+Lệnh này tự tạo cấu trúc thư mục, file khai báo module (manifest) và service provider.
 
-Alternatively, you can create a module manually by following the steps below.
+Bạn cũng có thể tạo module thủ công theo các bước dưới đây.
 
 ---
 
-## Step 1: Create directory structure
+## Bước 1: Tạo cấu trúc thư mục
 ```
-modules/{module_name}/
-├── {module_name}.module.php
+modules/{ten_module}/
+├── {ten_module}.module.php
 ├── src/
 │   ├── Controllers/
 │   ├── Models/
@@ -34,8 +34,8 @@ modules/{module_name}/
 └── views/
 ```
 
-## Step 2: Create module manifest
-Create `modules/{module_name}/{module_name}.module.php`:
+## Bước 2: Tạo file khai báo module
+Tạo file `modules/{ten_module}/{ten_module}.module.php`:
 
 ```php
 <?php
@@ -43,15 +43,15 @@ Create `modules/{module_name}/{module_name}.module.php`:
 return [
     'name' => 'Module Name',
     'controllers' => [
-        // Register controller classes here
+        // Đăng ký các class controller tại đây
     ],
     'providers' => [
-        // Register service providers here
+        // Đăng ký các service provider tại đây
     ],
 ];
 ```
 
-## Step 3: Register controllers & providers
-- Controllers are auto-discovered from the `controllers` array
-- Service providers are booted in the order listed
-- Module is automatically loaded via `autoload_modules.php`
+## Bước 3: Đăng ký controller và provider
+- Controller được nạp tự động từ mảng `controllers`
+- Service provider được khởi động (boot) theo đúng thứ tự khai báo
+- Module được nạp tự động qua `autoload_modules.php`

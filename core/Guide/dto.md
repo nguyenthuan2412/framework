@@ -1,18 +1,24 @@
-# Create a DTO (Data Transfer Object)
+# Tạo DTO (Data Transfer Object)
 
-## Overview
+## Tổng quan
 
-DTOs in Ryra Framework serve two purposes:
-1. **Data transfer** — Carry structured data between layers (Controller → Service, etc.)
-2. **Validation** — Auto-validate incoming request data using PHP 8 attributes
+DTO trong Ryra có hai mục đích:
+1. **Truyền dữ liệu**: mang dữ liệu có cấu trúc giữa các tầng (Controller → Service, ...)
+2. **Validate**: tự kiểm tra dữ liệu request bằng PHP 8 attributes
 
-There are two base classes:
-- [`BaseDTO`](core/BaseDTO/BaseDTO.php) — Simple DTO without validation, for internal data transfer
-- [`ValidatedDTO`](core/ValidatedDTO/ValidatedDTO.php) — DTO with attribute-based validation rules, for request validation
+Có hai class cha:
+- [`BaseDTO`](../BaseDTO/BaseDTO.php): DTO đơn giản, không validate, dùng để truyền dữ liệu nội bộ
+- [`ValidatedDTO`](../ValidatedDTO/ValidatedDTO.php): DTO có rule validate khai báo bằng attribute, dùng cho dữ liệu request
+
+Tạo nhanh DTO bằng lệnh:
+
+```bash
+php ryra gen:dto StoreCustomer --module=customer
+```
 
 ---
 
-## 1. Basic Structure
+## 1. Cấu trúc cơ bản
 
 ```php
 <?php
@@ -36,116 +42,116 @@ class StoreCustomerDTO extends ValidatedDTO
 }
 ```
 
-### Key points:
-- Extends [`ValidatedDTO`](core/ValidatedDTO/ValidatedDTO.php)
-- Properties are **public** with no type hints — validation rules handle type checking
-- Each property can have **multiple rule attributes** stacked
-- Validation runs when constructed with `$validate = true` or via [`fromArray($data, true)`](core/ValidatedDTO/ValidatedDTO.php:187)
-- Access values via `$dto->property`
+### Ghi nhớ:
+- Kế thừa [`ValidatedDTO`](../ValidatedDTO/ValidatedDTO.php)
+- Property để **public** và không khai báo kiểu, việc kiểm tra kiểu do các rule đảm nhận
+- Mỗi property có thể gắn **nhiều rule** cùng lúc
+- Khi khai báo DTO làm tham số của method trong controller, framework tự validate. Khi tự tạo, validate chạy nếu truyền `$validate = true` hoặc gọi [`fromArray($data, true)`](../ValidatedDTO/ValidatedDTO.php#L187)
+- Lấy giá trị bằng `$dto->property`
 
 ---
 
-## 2. All Available Rules
+## 2. Danh sách rule
 
-### 2.1 Presence
-| Rule | Params | Description |
+### 2.1 Bắt buộc / tuỳ chọn
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsRequired`](core/ValidatedDTO/Rules/IsRequired.php) | `?string $message` | Value must be present and not empty |
-| [`IsOptional`](core/ValidatedDTO/Rules/IsOptional.php) | *(none)* | Value is optional (skips validation if null) |
-| [`IsRequiredWhen`](core/ValidatedDTO/Rules/IsRequiredWhen.php) | `string\|Closure $field, array $values, ?string $message` | Required only when another field matches |
-| [`IsNotEmpty`](core/ValidatedDTO/Rules/IsNotEmpty.php) | `?string $message` | Value must not be empty |
+| [`IsRequired`](../ValidatedDTO/Rules/IsRequired.php) | `?string $message` | Bắt buộc có giá trị và không rỗng |
+| [`IsOptional`](../ValidatedDTO/Rules/IsOptional.php) | *(none)* | Không bắt buộc (bỏ qua validate nếu null) |
+| [`IsRequiredWhen`](../ValidatedDTO/Rules/IsRequiredWhen.php) | `string\|Closure $field, array $values, ?string $message` | Chỉ bắt buộc khi field khác có giá trị khớp |
+| [`IsNotEmpty`](../ValidatedDTO/Rules/IsNotEmpty.php) | `?string $message` | Không được rỗng |
 
-### 2.2 Type
-| Rule | Params | Description |
+### 2.2 Kiểu dữ liệu
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsString`](core/ValidatedDTO/Rules/IsString.php) | `?string $message` | Must be a string |
-| [`IsInteger`](core/ValidatedDTO/Rules/IsInteger.php) | `?string $message, bool $transform = false` | Must be an integer (auto-casts if transform: true) |
-| [`IsFloat`](core/ValidatedDTO/Rules/IsFloat.php) | `?string $message, bool $transform = false` | Must be a float (auto-casts if transform: true) |
-| [`IsBoolean`](core/ValidatedDTO/Rules/IsBoolean.php) | `?string $message, bool $transform = false` | Must be boolean (1/0) |
-| [`IsNumeric`](core/ValidatedDTO/Rules/IsNumeric.php) | `?string $message` | Must be numeric |
-| [`IsList`](core/ValidatedDTO/Rules/IsList.php) | `?string $ruleOrSchema = null, ?string $message` | Must be an indexed array; can nest DTOs or inline rules |
-| [`IsMap`](core/ValidatedDTO/Rules/IsMap.php) | `?string $dtoClass = null, ?string $message` | Must be an associative array; can nest DTOs |
+| [`IsString`](../ValidatedDTO/Rules/IsString.php) | `?string $message` | Phải là chuỗi |
+| [`IsInteger`](../ValidatedDTO/Rules/IsInteger.php) | `?string $message, bool $transform = false` | Phải là số nguyên (tự ép kiểu nếu `transform: true`) |
+| [`IsFloat`](../ValidatedDTO/Rules/IsFloat.php) | `?string $message, bool $transform = false` | Phải là số thực (tự ép kiểu nếu `transform: true`) |
+| [`IsBoolean`](../ValidatedDTO/Rules/IsBoolean.php) | `?string $message, bool $transform = false` | Phải là boolean (1/0) |
+| [`IsNumeric`](../ValidatedDTO/Rules/IsNumeric.php) | `?string $message` | Phải là số |
+| [`IsList`](../ValidatedDTO/Rules/IsList.php) | `?string $ruleOrSchema = null, ?string $message` | Phải là mảng tuần tự; có thể lồng DTO hoặc rule cho từng phần tử |
+| [`IsMap`](../ValidatedDTO/Rules/IsMap.php) | `?string $dtoClass = null, ?string $message` | Phải là mảng key-value; có thể lồng DTO |
 
-### 2.3 Format
-| Rule | Params | Description |
+### 2.3 Định dạng
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsEmail`](core/ValidatedDTO/Rules/IsEmail.php) | `bool $precise = false, ?string $message` | Valid email |
-| [`IsDate`](core/ValidatedDTO/Rules/IsDate.php) | `string $format = 'Y-m-d', ?string $message, bool $transform = false` | Valid date; auto-converts to Date object if transform: true |
-| [`IsDateString`](core/ValidatedDTO/Rules/IsDateString.php) | `?string $message` | Valid ISO 8601 date string |
-| [`IsRegex`](core/ValidatedDTO/Rules/IsRegex.php) | `string $pattern, ?string $message` | Match a regex pattern |
-| [`IsNotRegex`](core/ValidatedDTO/Rules/IsNotRegex.php) | `string $pattern, ?string $message` | Must NOT match a regex pattern |
-| [`IsUrl`](core/ValidatedDTO/Rules/IsUrl.php) | `?string $message` | Valid URL |
-| [`IsUUID`](core/ValidatedDTO/Rules/IsUUID.php) | `?int $version = null, ?string $message` | Valid UUID (use `IsUUID::V4` etc. for version) |
-| [`IsPhone`](core/ValidatedDTO/Rules/IsPhone.php) | `?string $region = null, ?string $message` | Valid phone number (e.g. `'vn'`) |
-| [`IsJson`](core/ValidatedDTO/Rules/IsJson.php) | `?string $message, bool $transform = false` | Valid JSON string |
-| [`IsIP`](core/ValidatedDTO/Rules/IsIP.php) | `?string $message` | Valid IP (v4 or v6) |
-| [`IsIPv4`](core/ValidatedDTO/Rules/IsIPv4.php) | `?string $message` | Valid IPv4 |
-| [`IsIPv6`](core/ValidatedDTO/Rules/IsIPv6.php) | `?string $message` | Valid IPv6 |
-| [`IsMacAddress`](core/ValidatedDTO/Rules/IsMacAddress.php) | `?string $message` | Valid MAC address |
-| [`IsLatitude`](core/ValidatedDTO/Rules/IsLatitude.php) | `?string $message` | Latitude (-90 to 90) |
-| [`IsLongitude`](core/ValidatedDTO/Rules/IsLongitude.php) | `?string $message` | Longitude (-180 to 180) |
-| [`IsLatLong`](core/ValidatedDTO/Rules/IsLatLong.php) | `?string $message` | "lat,lng" string |
-| [`IsHexadecimal`](core/ValidatedDTO/Rules/IsHexadecimal.php) | `?string $message` | Hex string |
-| [`IsBase64`](core/ValidatedDTO/Rules/IsBase64.php) | `?string $message` | Base64 string |
-| [`IsCSSColor`](core/ValidatedDTO/Rules/IsCSSColor.php) | `?string $message` | CSS color (hex/rgb/hsl/named) |
+| [`IsEmail`](../ValidatedDTO/Rules/IsEmail.php) | `bool $precise = false, ?string $message` | Email hợp lệ |
+| [`IsDate`](../ValidatedDTO/Rules/IsDate.php) | `string $format = 'Y-m-d', ?string $message, bool $transform = false` | Ngày hợp lệ; tự chuyển thành đối tượng Date nếu `transform: true` |
+| [`IsDateString`](../ValidatedDTO/Rules/IsDateString.php) | `?string $message` | Chuỗi ngày theo chuẩn ISO 8601 |
+| [`IsRegex`](../ValidatedDTO/Rules/IsRegex.php) | `string $pattern, ?string $message` | Khớp với biểu thức regex |
+| [`IsNotRegex`](../ValidatedDTO/Rules/IsNotRegex.php) | `string $pattern, ?string $message` | KHÔNG được khớp với biểu thức regex |
+| [`IsUrl`](../ValidatedDTO/Rules/IsUrl.php) | `?string $message` | URL hợp lệ |
+| [`IsUUID`](../ValidatedDTO/Rules/IsUUID.php) | `?int $version = null, ?string $message` | UUID hợp lệ (dùng `IsUUID::V4`, ... để chỉ định phiên bản) |
+| [`IsPhone`](../ValidatedDTO/Rules/IsPhone.php) | `?string $region = null, ?string $message` | Số điện thoại hợp lệ theo vùng (ví dụ `'vn'`) |
+| [`IsJson`](../ValidatedDTO/Rules/IsJson.php) | `?string $message, bool $transform = false` | Chuỗi JSON hợp lệ |
+| [`IsIP`](../ValidatedDTO/Rules/IsIP.php) | `?string $message` | Địa chỉ IP hợp lệ (v4 hoặc v6) |
+| [`IsIPv4`](../ValidatedDTO/Rules/IsIPv4.php) | `?string $message` | Địa chỉ IPv4 hợp lệ |
+| [`IsIPv6`](../ValidatedDTO/Rules/IsIPv6.php) | `?string $message` | Địa chỉ IPv6 hợp lệ |
+| [`IsMacAddress`](../ValidatedDTO/Rules/IsMacAddress.php) | `?string $message` | Địa chỉ MAC hợp lệ |
+| [`IsLatitude`](../ValidatedDTO/Rules/IsLatitude.php) | `?string $message` | Vĩ độ (-90 đến 90) |
+| [`IsLongitude`](../ValidatedDTO/Rules/IsLongitude.php) | `?string $message` | Kinh độ (-180 đến 180) |
+| [`IsLatLong`](../ValidatedDTO/Rules/IsLatLong.php) | `?string $message` | Chuỗi dạng "vĩ độ,kinh độ" |
+| [`IsHexadecimal`](../ValidatedDTO/Rules/IsHexadecimal.php) | `?string $message` | Chuỗi hexa |
+| [`IsBase64`](../ValidatedDTO/Rules/IsBase64.php) | `?string $message` | Chuỗi Base64 |
+| [`IsCSSColor`](../ValidatedDTO/Rules/IsCSSColor.php) | `?string $message` | Màu CSS (hex/rgb/hsl/tên màu) |
 
-### 2.4 String Content
-| Rule | Params | Description |
+### 2.4 Nội dung chuỗi
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsAlpha`](core/ValidatedDTO/Rules/IsAlpha.php) | `?string $message` | Only alphabet characters |
-| [`IsAlphaDash`](core/ValidatedDTO/Rules/IsAlphaDash.php) | `?string $message` | Alpha, numeric, dash, underscore |
-| [`IsAlphaNum`](core/ValidatedDTO/Rules/IsAlphaNum.php) | `?string $message` | Only alphabet and numeric |
-| [`IsAlphaSpaces`](core/ValidatedDTO/Rules/IsAlphaSpaces.php) | `?string $message` | Alphabet and spaces |
-| [`IsLowercase`](core/ValidatedDTO/Rules/IsLowercase.php) | `bool $transform = false, ?string $message` | Must be lowercase (auto-converts if transform: true) |
-| [`IsUppercase`](core/ValidatedDTO/Rules/IsUppercase.php) | `bool $transform = false, ?string $message` | Must be uppercase (auto-converts if transform: true) |
-| [`IsStartsWith`](core/ValidatedDTO/Rules/IsStartsWith.php) | `string\|array $prefix, bool $caseSensitive = true, ?string $message` | Must start with given prefix(es) |
+| [`IsAlpha`](../ValidatedDTO/Rules/IsAlpha.php) | `?string $message` | Chỉ chứa chữ cái |
+| [`IsAlphaDash`](../ValidatedDTO/Rules/IsAlphaDash.php) | `?string $message` | Chữ cái, số, gạch ngang, gạch dưới |
+| [`IsAlphaNum`](../ValidatedDTO/Rules/IsAlphaNum.php) | `?string $message` | Chỉ chứa chữ cái và số |
+| [`IsAlphaSpaces`](../ValidatedDTO/Rules/IsAlphaSpaces.php) | `?string $message` | Chữ cái và khoảng trắng |
+| [`IsLowercase`](../ValidatedDTO/Rules/IsLowercase.php) | `bool $transform = false, ?string $message` | Phải là chữ thường (tự chuyển nếu `transform: true`) |
+| [`IsUppercase`](../ValidatedDTO/Rules/IsUppercase.php) | `bool $transform = false, ?string $message` | Phải là chữ hoa (tự chuyển nếu `transform: true`) |
+| [`IsStartsWith`](../ValidatedDTO/Rules/IsStartsWith.php) | `string\|array $prefix, bool $caseSensitive = true, ?string $message` | Phải bắt đầu bằng (một trong) các tiền tố cho trước |
 
-### 2.5 Comparison / Size
-| Rule | Params | Description |
+### 2.5 So sánh / kích thước
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`Min`](core/ValidatedDTO/Rules/Min.php) | `float $min, ?string $message` | Min value/length/count |
-| [`Max`](core/ValidatedDTO/Rules/Max.php) | `float $max, ?string $message` | Max value/length/count |
-| [`Equals`](core/ValidatedDTO/Rules/Equals.php) | `string $field, bool $strict = false, ?string $message` | Must equal another field |
-| [`IsGreaterThan`](core/ValidatedDTO/Rules/IsGreaterThan.php) | `string $field, ?string $message` | Must be > another field |
-| [`IsGreaterThanOrEqual`](core/ValidatedDTO/Rules/IsGreaterThanOrEqual.php) | `string $field, ?string $message` | Must be >= another field |
-| [`IsPositive`](core/ValidatedDTO/Rules/IsPositive.php) | `?string $message` | Must be a positive number |
+| [`Min`](../ValidatedDTO/Rules/Min.php) | `float $min, ?string $message` | Giá trị / độ dài / số phần tử tối thiểu |
+| [`Max`](../ValidatedDTO/Rules/Max.php) | `float $max, ?string $message` | Giá trị / độ dài / số phần tử tối đa |
+| [`Equals`](../ValidatedDTO/Rules/Equals.php) | `string $field, bool $strict = false, ?string $message` | Phải bằng giá trị của field khác |
+| [`IsGreaterThan`](../ValidatedDTO/Rules/IsGreaterThan.php) | `string $field, ?string $message` | Phải lớn hơn field khác |
+| [`IsGreaterThanOrEqual`](../ValidatedDTO/Rules/IsGreaterThanOrEqual.php) | `string $field, ?string $message` | Phải lớn hơn hoặc bằng field khác |
+| [`IsPositive`](../ValidatedDTO/Rules/IsPositive.php) | `?string $message` | Phải là số dương |
 
 ### 2.6 Enum
-| Rule | Params | Description |
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsEnum`](core/ValidatedDTO/Rules/IsEnum.php) | `string $enum, array $only = [], array $except = [], bool $transform = false` | Must be a valid backed enum value; auto-converts to enum instance if transform: true |
+| [`IsEnum`](../ValidatedDTO/Rules/IsEnum.php) | `string $enum, array $only = [], array $except = [], bool $transform = false` | Phải là giá trị hợp lệ của backed enum; tự chuyển thành enum nếu `transform: true` |
 
 ### 2.7 Database
-| Rule | Params | Description |
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsUnique`](core/ValidatedDTO/Rules/IsUnique.php) | `string $tableOrModel, ?string $field = null, ?string $where = null, ?string $connection = null, ?string $message` | Value must be unique in DB table |
-| [`Exists`](core/ValidatedDTO/Rules/Exists.php) | `string $tableOrModel, string $field = 'id', ?string $where = null, ?string $connection = null, ?string $message` | Value must exist in DB table |
+| [`IsUnique`](../ValidatedDTO/Rules/IsUnique.php) | `string $tableOrModel, ?string $field = null, ?string $where = null, ?string $connection = null, ?string $message` | Giá trị chưa tồn tại trong bảng (duy nhất) |
+| [`Exists`](../ValidatedDTO/Rules/Exists.php) | `string $tableOrModel, string $field = 'id', ?string $where = null, ?string $connection = null, ?string $message` | Giá trị phải tồn tại trong bảng |
 
 ### 2.8 File
-| Rule | Params | Description |
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsFile`](core/ValidatedDTO/Rules/IsFile.php) | `?string $message` | Must be an uploaded file |
-| [`IsImage`](core/ValidatedDTO/Rules/IsImage.php) | `?string $message` | Must be an image (jpeg/png/bmp/gif/svg/webp) |
-| [`IsSize`](core/ValidatedDTO/Rules/IsSize.php) | `string\|float $size, ?string $message` | File size / string length / array count limit |
-| [`IsMimeType`](core/ValidatedDTO/Rules/IsMimeType.php) | `array $allowMimeTypes, ?string $message` | Must have allowed MIME types |
-| [`IsExtension`](core/ValidatedDTO/Rules/IsExtension.php) | `array $allowedExtensions, ?string $message` | Must have allowed file extensions |
-| [`IsUploadedFile`](core/ValidatedDTO/Rules/IsUploadedFile.php) | `?int $maxSize, ?int $minSize, array $allowedTypes, ?string $message` | Valid uploaded file with constraints |
+| [`IsFile`](../ValidatedDTO/Rules/IsFile.php) | `?string $message` | Phải là file upload |
+| [`IsImage`](../ValidatedDTO/Rules/IsImage.php) | `?string $message` | Phải là ảnh (jpeg/png/bmp/gif/svg/webp) |
+| [`IsSize`](../ValidatedDTO/Rules/IsSize.php) | `string\|float $size, ?string $message` | Giới hạn dung lượng file / độ dài chuỗi / số phần tử mảng |
+| [`IsMimeType`](../ValidatedDTO/Rules/IsMimeType.php) | `array $allowMimeTypes, ?string $message` | MIME type phải nằm trong danh sách cho phép |
+| [`IsExtension`](../ValidatedDTO/Rules/IsExtension.php) | `array $allowedExtensions, ?string $message` | Đuôi file phải nằm trong danh sách cho phép |
+| [`IsUploadedFile`](../ValidatedDTO/Rules/IsUploadedFile.php) | `?int $maxSize, ?int $minSize, array $allowedTypes, ?string $message` | File upload hợp lệ theo các ràng buộc (kích thước, loại) |
 
-### 2.9 Special
-| Rule | Params | Description |
+### 2.9 Đặc biệt
+| Rule | Tham số | Mô tả |
 |------|--------|-------------|
-| [`IsAccepted`](core/ValidatedDTO/Rules/IsAccepted.php) | `?string $message` | Must be yes/on/1/true (for terms) |
-| [`IsPassword`](core/ValidatedDTO/Rules/IsPassword.php) | `array $rules` | Password strength (min, max, letters, numbers, mixedCase, symbols, uncompromised) |
-| [`IsCustom`](core/ValidatedDTO/Rules/IsCustom.php) | `string $method, string $message` | Custom validation via static method on the DTO |
-| [`IsDistinct`](core/ValidatedDTO/Rules/IsDistinct.php) | `bool $strict = false, bool $ignoreCase = false, ?string $message` | Array values must be distinct |
-| [`Bail`](core/ValidatedDTO/Rules/Bail.php) | *(none)* | Stop validation on first failure for this property |
-| [`Transform`](core/ValidatedDTO/Rules/Transform.php) | `string $method` | Transform value via static method on the DTO |
+| [`IsAccepted`](../ValidatedDTO/Rules/IsAccepted.php) | `?string $message` | Phải là yes/on/1/true (dùng cho đồng ý điều khoản) |
+| [`IsPassword`](../ValidatedDTO/Rules/IsPassword.php) | `array $rules` | Độ mạnh mật khẩu (min, max, letters, numbers, mixedCase, symbols, uncompromised) |
+| [`IsCustom`](../ValidatedDTO/Rules/IsCustom.php) | `string $method, string $message` | Validate tuỳ biến bằng static method trong DTO |
+| [`IsDistinct`](../ValidatedDTO/Rules/IsDistinct.php) | `bool $strict = false, bool $ignoreCase = false, ?string $message` | Các phần tử trong mảng không được trùng nhau |
+| [`Bail`](../ValidatedDTO/Rules/Bail.php) | *(none)* | Dừng validate field này ngay khi gặp lỗi đầu tiên |
+| [`Transform`](../ValidatedDTO/Rules/Transform.php) | `string $method` | Biến đổi giá trị bằng static method trong DTO |
 
 ---
 
-## 3. Examples
+## 3. Ví dụ
 
-### 3.1 Basic Required + Type
+### 3.1 Bắt buộc + kiểu dữ liệu
 
 ```php
 class LoginDTO extends ValidatedDTO
@@ -160,7 +166,7 @@ class LoginDTO extends ValidatedDTO
 }
 ```
 
-### 3.2 Optional + Enum + Date
+### 3.2 Tuỳ chọn + Enum + Ngày
 
 ```php
 class CreateCustomerDTO extends ValidatedDTO
@@ -174,7 +180,7 @@ class CreateCustomerDTO extends ValidatedDTO
 }
 ```
 
-### 3.3 Database Uniqueness
+### 3.3 Kiểm tra trùng trong database
 
 ```php
 class StoreCustomerDTO extends ValidatedDTO
@@ -186,7 +192,7 @@ class StoreCustomerDTO extends ValidatedDTO
 }
 ```
 
-### 3.4 Existence Check
+### 3.4 Kiểm tra tồn tại
 
 ```php
 class AssignCountryDTO extends ValidatedDTO
@@ -209,7 +215,7 @@ class LoginDTO extends ValidatedDTO
 }
 ```
 
-### 3.6 Custom Validation
+### 3.6 Validate tuỳ biến
 
 ```php
 class RegisterCustomerDTO extends ValidatedDTO
@@ -225,7 +231,7 @@ class RegisterCustomerDTO extends ValidatedDTO
 }
 ```
 
-### 3.7 Password Strength
+### 3.7 Độ mạnh mật khẩu
 
 ```php
 class CompleteRegisterDTO extends ValidatedDTO
@@ -245,7 +251,7 @@ class CompleteRegisterDTO extends ValidatedDTO
 }
 ```
 
-### 3.8 Unique with Custom Where (Update)
+### 3.8 Unique với điều kiện where tuỳ biến (khi cập nhật)
 
 ```php
 class UpdateCustomerDTO extends ValidatedDTO
@@ -270,7 +276,7 @@ class UpdateCustomerDTO extends ValidatedDTO
 }
 ```
 
-### 3.9 Nested DTO (IsList + DTO class)
+### 3.9 DTO lồng nhau (IsList + class DTO)
 
 ```php
 class CountryDTO extends ValidatedDTO
@@ -289,7 +295,7 @@ class SyncCountry extends ValidatedDTO
 }
 ```
 
-### 3.10 Nested DTO (IsMap + DTO class)
+### 3.10 DTO lồng nhau (IsMap + class DTO)
 
 ```php
 class OrderDTO extends ValidatedDTO
@@ -307,13 +313,13 @@ class AddressDTO extends ValidatedDTO
 }
 ```
 
-### 3.11 IsList + Inline Rule
+### 3.11 IsList + rule cho từng phần tử
 
 ```php
 class TagDTO extends ValidatedDTO
 {
     #[IsRequired]
-    #[IsList(IsString::class)]  // each item must be a string
+    #[IsList(IsString::class)]  // mỗi phần tử phải là chuỗi
     public $tags;
 }
 ```
@@ -334,7 +340,7 @@ class ExampleDTO extends ValidatedDTO
 }
 ```
 
-### 3.13 Bail (Stop on First Error)
+### 3.13 Bail (dừng ở lỗi đầu tiên)
 
 ```php
 class RegisterDTO extends ValidatedDTO
@@ -344,23 +350,23 @@ class RegisterDTO extends ValidatedDTO
 }
 ```
 
-### 3.14 Transform (Integer/Float/Date/Enum)
+### 3.14 Tự chuyển kiểu (Integer/Float/Date/Enum)
 
 ```php
 class ProductDTO extends ValidatedDTO
 {
-    #[IsRequired] #[IsInteger(transform: true)] public $quantity;  // auto-casts to int
-    #[IsRequired] #[IsFloat(transform: true)]   public $price;     // auto-casts to float
+    #[IsRequired] #[IsInteger(transform: true)] public $quantity;  // tự ép về int
+    #[IsRequired] #[IsFloat(transform: true)]   public $price;     // tự ép về float
 }
 
 class EventDTO extends ValidatedDTO
 {
-    #[IsRequired] #[IsDate(format: 'Y-m-d', transform: true)] public $event_date;  // auto-converts to Date object
+    #[IsRequired] #[IsDate(format: 'Y-m-d', transform: true)] public $event_date;  // tự chuyển thành đối tượng Date
 }
 
 class CustomerDTO extends ValidatedDTO
 {
-    #[IsRequired] #[IsEnum(CustomerType::class, transform: true)] public $type;  // auto-converts to enum instance
+    #[IsRequired] #[IsEnum(CustomerType::class, transform: true)] public $type;  // tự chuyển thành enum
 }
 ```
 
@@ -427,7 +433,19 @@ class TermsDTO extends ValidatedDTO
 
 ---
 
-## 4. Usage in Controllers
+## 4. Dùng trong Controller
+
+Cách thường dùng nhất là khai báo DTO làm tham số của method. Framework tự validate và tự trả lỗi nếu dữ liệu sai:
+
+```php
+#[Post(uri: '/')]
+public function store(StoreCustomerDTO $dto): JsonResponse
+{
+    return Response::json(['data' => $dto->toArray()], 201);
+}
+```
+
+Nếu muốn tự xử lý lỗi validate, tạo DTO thủ công:
 
 ```php
 class CustomerController extends Controller
@@ -436,7 +454,7 @@ class CustomerController extends Controller
     {
         try {
             $dto = new StoreCustomerDTO($request->all(), validate: true);
-            // or: $dto = StoreCustomerDTO::fromArray($request->all(), validate: true);
+            // hoặc: $dto = StoreCustomerDTO::fromArray($request->all(), validate: true);
 
             $data = $dto->toArray();
             $subset = $dto->only(['name', 'email']);
@@ -455,9 +473,9 @@ class CustomerController extends Controller
 
 ---
 
-## 5. BaseDTO (Without Validation)
+## 5. BaseDTO (không validate)
 
-For internal data transfer without validation, use [`BaseDTO`](core/BaseDTO/BaseDTO.php):
+Để truyền dữ liệu nội bộ mà không cần validate, dùng [`BaseDTO`](../BaseDTO/BaseDTO.php):
 
 ```php
 class InvoiceDTO extends BaseDTO
@@ -469,20 +487,20 @@ class InvoiceDTO extends BaseDTO
 }
 ```
 
-Methods: [`toArray()`](core/BaseDTO/BaseDTO.php:55), [`toJson()`](core/BaseDTO/BaseDTO.php:65), [`only()`](core/BaseDTO/BaseDTO.php:25), [`except()`](core/BaseDTO/BaseDTO.php:30), [`fromArray()`](core/BaseDTO/BaseDTO.php:35), [`fromJson()`](core/BaseDTO/BaseDTO.php:40), [`all()`](core/BaseDTO/BaseDTO.php:50), [`toModel()`](core/BaseDTO/BaseDTO.php:70). Implements `IteratorAggregate`, `Arrayable`, `JsonSerializable`.
+Các method: [`toArray()`](../BaseDTO/BaseDTO.php#L55), [`toJson()`](../BaseDTO/BaseDTO.php#L65), [`only()`](../BaseDTO/BaseDTO.php#L25), [`except()`](../BaseDTO/BaseDTO.php#L30), [`fromArray()`](../BaseDTO/BaseDTO.php#L35), [`fromJson()`](../BaseDTO/BaseDTO.php#L40), [`all()`](../BaseDTO/BaseDTO.php#L50), [`toModel()`](../BaseDTO/BaseDTO.php#L70). Implement `IteratorAggregate`, `Arrayable`, `JsonSerializable`.
 
 ---
 
-## 6. Quick Reference
+## 6. Tra cứu nhanh
 
-| Category | Rules |
+| Nhóm | Rule |
 |----------|-------|
-| **Presence** | [`IsRequired`](core/ValidatedDTO/Rules/IsRequired.php), [`IsOptional`](core/ValidatedDTO/Rules/IsOptional.php), [`IsRequiredWhen`](core/ValidatedDTO/Rules/IsRequiredWhen.php), [`IsNotEmpty`](core/ValidatedDTO/Rules/IsNotEmpty.php) |
-| **Type** | [`IsString`](core/ValidatedDTO/Rules/IsString.php), [`IsInteger`](core/ValidatedDTO/Rules/IsInteger.php), [`IsFloat`](core/ValidatedDTO/Rules/IsFloat.php), [`IsBoolean`](core/ValidatedDTO/Rules/IsBoolean.php), [`IsNumeric`](core/ValidatedDTO/Rules/IsNumeric.php), [`IsList`](core/ValidatedDTO/Rules/IsList.php), [`IsMap`](core/ValidatedDTO/Rules/IsMap.php) |
-| **Format** | [`IsEmail`](core/ValidatedDTO/Rules/IsEmail.php), [`IsDate`](core/ValidatedDTO/Rules/IsDate.php), [`IsDateString`](core/ValidatedDTO/Rules/IsDateString.php), [`IsRegex`](core/ValidatedDTO/Rules/IsRegex.php), [`IsNotRegex`](core/ValidatedDTO/Rules/IsNotRegex.php), [`IsUrl`](core/ValidatedDTO/Rules/IsUrl.php), [`IsUUID`](core/ValidatedDTO/Rules/IsUUID.php), [`IsPhone`](core/ValidatedDTO/Rules/IsPhone.php), [`IsJson`](core/ValidatedDTO/Rules/IsJson.php), [`IsIP`](core/ValidatedDTO/Rules/IsIP.php), [`IsIPv4`](core/ValidatedDTO/Rules/IsIPv4.php), [`IsIPv6`](core/ValidatedDTO/Rules/IsIPv6.php), [`IsMacAddress`](core/ValidatedDTO/Rules/IsMacAddress.php), [`IsLatitude`](core/ValidatedDTO/Rules/IsLatitude.php), [`IsLongitude`](core/ValidatedDTO/Rules/IsLongitude.php), [`IsLatLong`](core/ValidatedDTO/Rules/IsLatLong.php), [`IsHexadecimal`](core/ValidatedDTO/Rules/IsHexadecimal.php), [`IsBase64`](core/ValidatedDTO/Rules/IsBase64.php), [`IsCSSColor`](core/ValidatedDTO/Rules/IsCSSColor.php) |
-| **String** | [`IsAlpha`](core/ValidatedDTO/Rules/IsAlpha.php), [`IsAlphaDash`](core/ValidatedDTO/Rules/IsAlphaDash.php), [`IsAlphaNum`](core/ValidatedDTO/Rules/IsAlphaNum.php), [`IsAlphaSpaces`](core/ValidatedDTO/Rules/IsAlphaSpaces.php), [`IsLowercase`](core/ValidatedDTO/Rules/IsLowercase.php), [`IsUppercase`](core/ValidatedDTO/Rules/IsUppercase.php), [`IsStartsWith`](core/ValidatedDTO/Rules/IsStartsWith.php) |
-| **Comparison** | [`Min`](core/ValidatedDTO/Rules/Min.php), [`Max`](core/ValidatedDTO/Rules/Max.php), [`Equals`](core/ValidatedDTO/Rules/Equals.php), [`IsGreaterThan`](core/ValidatedDTO/Rules/IsGreaterThan.php), [`IsGreaterThanOrEqual`](core/ValidatedDTO/Rules/IsGreaterThanOrEqual.php), [`IsPositive`](core/ValidatedDTO/Rules/IsPositive.php) |
-| **Enum** | [`IsEnum`](core/ValidatedDTO/Rules/IsEnum.php) |
-| **Database** | [`IsUnique`](core/ValidatedDTO/Rules/IsUnique.php), [`Exists`](core/ValidatedDTO/Rules/Exists.php) |
-| **File** | [`IsFile`](core/ValidatedDTO/Rules/IsFile.php), [`IsImage`](core/ValidatedDTO/Rules/IsImage.php), [`IsSize`](core/ValidatedDTO/Rules/IsSize.php), [`IsMimeType`](core/ValidatedDTO/Rules/IsMimeType.php), [`IsExtension`](core/ValidatedDTO/Rules/IsExtension.php), [`IsUploadedFile`](core/ValidatedDTO/Rules/IsUploadedFile.php) |
-| **Special** | [`IsAccepted`](core/ValidatedDTO/Rules/IsAccepted.php), [`IsPassword`](core/ValidatedDTO/Rules/IsPassword.php), [`IsCustom`](core/ValidatedDTO/Rules/IsCustom.php), [`IsDistinct`](core/ValidatedDTO/Rules/IsDistinct.php), [`Bail`](core/ValidatedDTO/Rules/Bail.php), [`Transform`](core/ValidatedDTO/Rules/Transform.php) |
+| **Bắt buộc / tuỳ chọn** | [`IsRequired`](../ValidatedDTO/Rules/IsRequired.php), [`IsOptional`](../ValidatedDTO/Rules/IsOptional.php), [`IsRequiredWhen`](../ValidatedDTO/Rules/IsRequiredWhen.php), [`IsNotEmpty`](../ValidatedDTO/Rules/IsNotEmpty.php) |
+| **Kiểu dữ liệu** | [`IsString`](../ValidatedDTO/Rules/IsString.php), [`IsInteger`](../ValidatedDTO/Rules/IsInteger.php), [`IsFloat`](../ValidatedDTO/Rules/IsFloat.php), [`IsBoolean`](../ValidatedDTO/Rules/IsBoolean.php), [`IsNumeric`](../ValidatedDTO/Rules/IsNumeric.php), [`IsList`](../ValidatedDTO/Rules/IsList.php), [`IsMap`](../ValidatedDTO/Rules/IsMap.php) |
+| **Định dạng** | [`IsEmail`](../ValidatedDTO/Rules/IsEmail.php), [`IsDate`](../ValidatedDTO/Rules/IsDate.php), [`IsDateString`](../ValidatedDTO/Rules/IsDateString.php), [`IsRegex`](../ValidatedDTO/Rules/IsRegex.php), [`IsNotRegex`](../ValidatedDTO/Rules/IsNotRegex.php), [`IsUrl`](../ValidatedDTO/Rules/IsUrl.php), [`IsUUID`](../ValidatedDTO/Rules/IsUUID.php), [`IsPhone`](../ValidatedDTO/Rules/IsPhone.php), [`IsJson`](../ValidatedDTO/Rules/IsJson.php), [`IsIP`](../ValidatedDTO/Rules/IsIP.php), [`IsIPv4`](../ValidatedDTO/Rules/IsIPv4.php), [`IsIPv6`](../ValidatedDTO/Rules/IsIPv6.php), [`IsMacAddress`](../ValidatedDTO/Rules/IsMacAddress.php), [`IsLatitude`](../ValidatedDTO/Rules/IsLatitude.php), [`IsLongitude`](../ValidatedDTO/Rules/IsLongitude.php), [`IsLatLong`](../ValidatedDTO/Rules/IsLatLong.php), [`IsHexadecimal`](../ValidatedDTO/Rules/IsHexadecimal.php), [`IsBase64`](../ValidatedDTO/Rules/IsBase64.php), [`IsCSSColor`](../ValidatedDTO/Rules/IsCSSColor.php) |
+| **Chuỗi** | [`IsAlpha`](../ValidatedDTO/Rules/IsAlpha.php), [`IsAlphaDash`](../ValidatedDTO/Rules/IsAlphaDash.php), [`IsAlphaNum`](../ValidatedDTO/Rules/IsAlphaNum.php), [`IsAlphaSpaces`](../ValidatedDTO/Rules/IsAlphaSpaces.php), [`IsLowercase`](../ValidatedDTO/Rules/IsLowercase.php), [`IsUppercase`](../ValidatedDTO/Rules/IsUppercase.php), [`IsStartsWith`](../ValidatedDTO/Rules/IsStartsWith.php) |
+| **So sánh** | [`Min`](../ValidatedDTO/Rules/Min.php), [`Max`](../ValidatedDTO/Rules/Max.php), [`Equals`](../ValidatedDTO/Rules/Equals.php), [`IsGreaterThan`](../ValidatedDTO/Rules/IsGreaterThan.php), [`IsGreaterThanOrEqual`](../ValidatedDTO/Rules/IsGreaterThanOrEqual.php), [`IsPositive`](../ValidatedDTO/Rules/IsPositive.php) |
+| **Enum** | [`IsEnum`](../ValidatedDTO/Rules/IsEnum.php) |
+| **Database** | [`IsUnique`](../ValidatedDTO/Rules/IsUnique.php), [`Exists`](../ValidatedDTO/Rules/Exists.php) |
+| **File** | [`IsFile`](../ValidatedDTO/Rules/IsFile.php), [`IsImage`](../ValidatedDTO/Rules/IsImage.php), [`IsSize`](../ValidatedDTO/Rules/IsSize.php), [`IsMimeType`](../ValidatedDTO/Rules/IsMimeType.php), [`IsExtension`](../ValidatedDTO/Rules/IsExtension.php), [`IsUploadedFile`](../ValidatedDTO/Rules/IsUploadedFile.php) |
+| **Đặc biệt** | [`IsAccepted`](../ValidatedDTO/Rules/IsAccepted.php), [`IsPassword`](../ValidatedDTO/Rules/IsPassword.php), [`IsCustom`](../ValidatedDTO/Rules/IsCustom.php), [`IsDistinct`](../ValidatedDTO/Rules/IsDistinct.php), [`Bail`](../ValidatedDTO/Rules/Bail.php), [`Transform`](../ValidatedDTO/Rules/Transform.php) |
