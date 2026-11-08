@@ -1,0 +1,15 @@
+<?php
+
+namespace {{namespace}};
+
+use Closure;
+use Ryra\Core\Http\Request;
+use Ryra\Core\Http\Response;
+
+class {{name}}Middleware
+{
+    public function handle(Request $request, Closure $next): Response
+    {
+        return $next($request);
+    }
+}

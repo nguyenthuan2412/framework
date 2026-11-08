@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>{{message}}</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Nunito', sans-serif;
+            background-color: #fff;
+            color: #636b6f;
+        }
+
+        .container {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .error-code {
+            font-size: 96px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        .message {
+            font-size: 24px;
+            font-weight: normal;
+            margin-bottom: 20px;
+        }
+
+        .links {
+            margin-top: 20px;
+        }
+
+        .links a {
+            color: #636b6f;
+            padding: 0 25px;
+            font-size: 14px;
+            font-weight: 600;
+            letter-spacing: .1rem;
+            text-decoration: none;
+            text-transform: uppercase;
+        }
+
+        .links a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="error-code">{{status}}</div>
+        <div class="message">{{message}}</div>
+    </div>
+</body>
+</html>

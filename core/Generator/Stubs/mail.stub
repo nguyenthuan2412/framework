@@ -1,0 +1,23 @@
+<?php
+
+namespace {{namespace}};
+
+use Ryra\Core\Mail\Mailable;
+use Ryra\Core\Mail\Mailables\ContentInterface;
+use Ryra\Core\Mail\Mailables\Envelope;
+use Ryra\Core\Mail\Mailables\View;
+
+class {{name}} extends Mailable
+{
+    public function __construct() {}
+
+    public function envelope(): Envelope
+    {
+        return new Envelope(subject: '{{name}}');
+    }
+
+    public function content(): ContentInterface
+    {
+        return new View('@{{module_lower}}/mails/{{name}}.twig', []);
+    }
+}

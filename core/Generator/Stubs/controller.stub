@@ -1,0 +1,59 @@
+<?php
+
+namespace {{namespace}};
+
+use Ryra\Core\Http\JsonResponse;
+use Ryra\Core\Http\Response;
+use Ryra\Core\Route\Attributes\Delete;
+use Ryra\Core\Route\Attributes\Get;
+use Ryra\Core\Route\Attributes\Group;
+use Ryra\Core\Route\Attributes\Post;
+use Ryra\Core\Route\Attributes\Put;
+
+#[Group(prefix: '{{prefix}}')]
+class {{name}}Controller
+{
+    public function __construct() {}
+
+    #[Get(uri: '/', summary: 'Get list {{name}}.')]
+    public function index(): JsonResponse
+    {
+        return Response::json([
+            'message' => 'Get list {{name}} successful.',
+            'data'    => [],
+        ]);
+    }
+
+    #[Post(uri: '/', summary: 'Create {{name}}.')]
+    public function store(): JsonResponse
+    {
+        return Response::json([
+            'message' => 'Create {{name}} successful.',
+        ], 201);
+    }
+
+    #[Get(uri: '{id:\d+}', summary: 'Get {{name}} detail.')]
+    public function show(int $id): JsonResponse
+    {
+        return Response::json([
+            'message' => 'Get {{name}} successful.',
+            'data'    => [],
+        ]);
+    }
+
+    #[Put(uri: '{id:\d+}', summary: 'Update {{name}}.')]
+    public function update(int $id): JsonResponse
+    {
+        return Response::json([
+            'message' => 'Update {{name}} successful.',
+        ]);
+    }
+
+    #[Delete(uri: '{id:\d+}', summary: 'Delete {{name}}.')]
+    public function destroy(int $id): JsonResponse
+    {
+        return Response::json([
+            'message' => 'Delete {{name}} successful.',
+        ]);
+    }
+}

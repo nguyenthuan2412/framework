@@ -1,0 +1,15 @@
+<?php
+
+namespace {{namespace}};
+
+use Ryra\Core\ValidatedDTO\Rules\IsOptional;
+use Ryra\Core\ValidatedDTO\Rules\IsRequired;
+use Ryra\Core\ValidatedDTO\Rules\IsString;
+use Ryra\Core\ValidatedDTO\ValidatedDTO;
+
+class {{name}}DTO extends ValidatedDTO
+{
+    #[IsRequired]
+    #[IsString]
+    public $name;
+}

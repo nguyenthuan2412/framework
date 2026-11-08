@@ -1,0 +1,14 @@
+services:
+  php:
+    build:
+      context: ./docker/php/${PHP_VERSION}
+      args:
+        COMPOSER_VERSION: ${COMPOSER_VERSION}
+    restart: "always"
+    ports:
+      - "9090:9090"
+    image: tourdb-php
+    container_name: tourdb-php
+    volumes:
+      - .:/var/www/html
+      - ./docker/php/${PHP_VERSION}/php.ini:/usr/local/etc/php/php.ini

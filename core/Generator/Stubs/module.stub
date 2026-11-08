@@ -1,0 +1,9 @@
+<?php
+
+return [
+    'name' => '{{displayName}}',
+
+    'controllers' => [],
+
+    'providers' => [],
+];

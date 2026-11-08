@@ -1,0 +1,18 @@
+<?php
+
+namespace {{namespace}};
+
+use Ryra\Core\Container\ServiceProvider;
+
+class {{name}}ServiceProvider extends ServiceProvider
+{
+    public function register(): void
+    {
+        //
+    }
+
+    public function boot(): void
+    {
+        //
+    }
+}

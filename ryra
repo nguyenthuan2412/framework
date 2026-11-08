@@ -1,0 +1,38 @@
+<?php
+
+$_SERVER['COLLISION_PRINTER'] = 'DefaultPrinter';
+
+use Ryra\Core\Middleware\ConvertEmptyStringsToNull;
+use Ryra\Core\Container\ServiceProviderManager;
+use Ryra\Core\Middleware\MiddlewareCollection;
+use Ryra\Core\Middleware\TrimStrings;
+use Ryra\Core\Http\Middleware\HandleException;
+use Ryra\Modules\Common\Middlewares\LogRequest;
+use Ryra\Core\Middleware\HandleCors;
+use Ryra\Core\App;
+use Ryra\Modules\Common\Middlewares\SetLocaleFromHeader;
+
+require __DIR__ . '/core/constants.php';
+require __DIR__ . '/core/functions.php';
+require __DIR__ . '/vendor/autoload.php';
+
+\ini_set('memory_limit', '512M');
+
+$status = App::getInstance()
+    ->setBasePath(__DIR__)
+    ->withMiddleware(static function (MiddlewareCollection $middlewares): void {
+        $middlewares->use([
+            HandleCors::class,
+            HandleException::class,
+            LogRequest::class,
+            TrimStrings::class,
+            SetLocaleFromHeader::class,
+            ConvertEmptyStringsToNull::class,
+        ]);
+    })
+    ->withProviders(static function (ServiceProviderManager $providers): void {
+        
+    })
+    ->start();
+
+exit($status);
