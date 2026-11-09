@@ -3,6 +3,7 @@
 namespace Ryra\Core;
 
 use Ryra\Core\Container\Container;
+use Ryra\Core\Container\Proxy\ProxyManager;
 use Closure;
 
 class App extends Container
@@ -69,6 +70,8 @@ class App extends Container
     {
         if (\chdir($path)) {
             $this->basePath = $path;
+            // Proxy sinh sẵn cho Container::make()/injectProperties(), thay cho Reflection mỗi lần gọi.
+            static::setProxyManager(ProxyManager::create(\join_paths($path, 'storage', 'runtime', 'proxy')));
         }
         return $this;
     }

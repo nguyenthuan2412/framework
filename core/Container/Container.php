@@ -4,12 +4,15 @@ namespace Ryra\Core\Container;
 
 use Ryra\Core\Contracts\Container\Container as ContractContainer;
 use Ryra\Core\Container\Exception\ServiceNotFoundException;
+use Ryra\Core\Container\Proxy\ProxyManager;
 use Swoole\Coroutine;
 use ArrayAccess;
 
 class Container implements ContractContainer, ArrayAccess
 {
     private static ?ContractContainer $instance = null;
+
+    protected static ?ProxyManager $proxyManager = null;
 
     /**
      * @var array<string, object>
@@ -239,8 +242,25 @@ class Container implements ContractContainer, ArrayAccess
         return $service;
     }
 
+    /**
+     * Bật proxy sinh sẵn (bỏ Reflection khỏi make()/injectProperties()). null = tắt.
+     */
+    public static function setProxyManager(?ProxyManager $proxyManager): void
+    {
+        static::$proxyManager = $proxyManager;
+    }
+
+    public static function getProxyManager(): ?ProxyManager
+    {
+        return static::$proxyManager;
+    }
+
     public static function make(string $concrete, array $parameters = []): object
     {
+        if (static::$proxyManager && ($proxy = static::$proxyManager->proxyFor($concrete))) {
+            return $proxy::make(static::getInstance(), $parameters);
+        }
+
         $concrete = new $concrete(...static::getObjectDependencies($concrete, $parameters));
         static::injectProperties($concrete);
         return $concrete;
@@ -316,6 +336,11 @@ class Container implements ContractContainer, ArrayAccess
 
     protected static function injectProperties(object $object): void
     {
+        if (static::$proxyManager && ($proxy = static::$proxyManager->proxyFor($object::class))) {
+            $proxy::inject($object, static::getInstance());
+            return;
+        }
+
         $properties = (new \ReflectionObject($object))->getProperties();
         if (!empty($properties)) {
             foreach ($properties as $property) {

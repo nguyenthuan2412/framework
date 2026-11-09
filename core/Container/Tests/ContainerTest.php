@@ -71,6 +71,7 @@ class ContainerTest extends TestCase
         $prop = $ref->getProperty('instance');
         $prop->setAccessible(true);
         $prop->setValue(null, null);
+        Container::setProxyManager(null);
 
         $this->container = Container::getInstance();
     }
