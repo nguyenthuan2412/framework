@@ -1,5 +1,5 @@
 vendor
-.env*
+.env
 .history
 storage/vietiso/logs
 storage/vietiso/app.pid
