@@ -2,6 +2,7 @@
 
 use Ryra\Modules\Example\Controllers\ExampleController;
 use Ryra\Modules\Example\Providers\ExampleServiceProvider;
+use Ryra\Modules\Example\Grpc\GreeterService;
 
 return [
     'name' => 'Example',
@@ -12,5 +13,9 @@ return [
 
     'providers' => [
         ExampleServiceProvider::class,
+    ],
+
+    'grpc_services' => [
+        GreeterService::class,
     ],
 ];

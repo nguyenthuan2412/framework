@@ -20,6 +20,8 @@ RUN apt-get update && apt-get install -y \
     git \
     libicu-dev \
     libmagickwand-dev \
+    protobuf-compiler \
+    libprotobuf-dev \
     && docker-php-ext-configure gd --with-jpeg --with-webp
 
 # Install extensions php
@@ -53,6 +55,9 @@ RUN docker-php-ext-enable \
 
 RUN pecl install imagick \
     && docker-php-ext-enable imagick
+
+# (Tuỳ chọn) ext protobuf viết bằng C giúp encode/decode gRPC nhanh hơn google/protobuf thuần PHP.
+# RUN pecl install protobuf && docker-php-ext-enable protobuf
 
 RUN pecl install xdebug \
     && docker-php-ext-enable xdebug

@@ -22,6 +22,7 @@ return [
     \Ryra\Core\Websocket\Server\WebsocketServiceProvider::class,
     \Ryra\Core\Asset\AssetServiceProvider::class,
     \Ryra\Core\Messenger\MessengerServiceProvider::class,
+    \Ryra\Core\Grpc\GrpcServiceProvider::class,
     \Ryra\Core\Process\ProcessServiceProvider::class,
     \Ryra\Core\Image\ImageServiceProvider::class,
     \Ryra\Core\Permission\PermissionServiceProvider::class,

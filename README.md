@@ -321,6 +321,7 @@ Hướng dẫn chi tiết từng phần nằm trong [core/Guide/](core/Guide/).
 | Ghi log | [log.md](core/Guide/log.md) |
 | Gửi mail (SMTP / SendGrid / Mailtrap, Mailable, đính kèm) | [mail.md](core/Guide/mail.md) |
 | Gọi API bên ngoài (HTTP Client) | [http-client.md](core/Guide/http-client.md) |
+| gRPC server/client, tự sinh `.proto` từ class PHP | [grpc.md](core/Guide/grpc.md) |
 | Đa ngôn ngữ | [translation.md](core/Guide/translation.md) |
 | Collection, Arr, Str, Date | [collection.md](core/Guide/collection.md) |
 | Tổng hợp nhanh: Hash, Snowflake, Context, Mail | [services.md](core/Guide/services.md) |
