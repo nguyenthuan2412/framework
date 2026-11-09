@@ -2,7 +2,7 @@
 
 Ryra là một PHP framework chạy trên **Swoole** (server chạy liên tục, hỗ trợ coroutine), tổ chức code theo **module**. Route, middleware và validate được khai báo bằng **PHP 8 attributes**.
 
-Framework có sẵn: HTTP/WebSocket server, Socket.IO, ORM + Query Builder, ValidatedDTO, Auth/JWT, Cache/Redis, Queue (Messenger), Mail, Twig view, Excel, PDF, xử lý ảnh, sinh API docs (OpenAPI), tích hợp AI (OpenAI / Claude / Gemini), v.v.
+Framework có sẵn: HTTP/WebSocket server, Socket.IO, ORM + Query Builder, ValidatedDTO, Auth/JWT, Cache/Redis, Mail, Twig view, Excel, PDF, xử lý ảnh, sinh API docs (OpenAPI), tích hợp AI (OpenAI / Claude / Gemini), v.v.
 
 ---
 
@@ -279,8 +279,7 @@ Chạy `php ryra list` để xem toàn bộ lệnh.
 | `php ryra gen:model <tên> --module=<m>` | Tạo model |
 | `php ryra gen:middleware <tên> --module=<m>` | Tạo middleware |
 | `php ryra gen:provider <tên> --module=<m>` | Tạo service provider |
-| `php ryra gen:mail <tên> --module=<m>` | Tạo Mailable |
-| `php ryra messenger:consume` | Chạy worker xử lý queue (chưa ổn định, xem mục 8) |
+| `php ryra gen:mail <tên> --module=<m>` | Tạo class Mailable |
 | `php ryra test --module=<m>` | Chạy test Pest trong `modules/<m>/tests` |
 
 Các lệnh `gen:*` có thêm tuỳ chọn `-f` / `--force` để ghi đè file đã tồn tại.
@@ -320,25 +319,16 @@ Hướng dẫn chi tiết từng phần nằm trong [core/Guide/](core/Guide/).
 | Cấu hình, `.env`, môi trường, hàm helper toàn cục | [config.md](core/Guide/config.md) |
 | Event & listener | [event.md](core/Guide/event.md) |
 | Ghi log | [log.md](core/Guide/log.md) |
+| Gửi mail (SMTP / SendGrid / Mailtrap, Mailable, đính kèm) | [mail.md](core/Guide/mail.md) |
 | Gọi API bên ngoài (HTTP Client) | [http-client.md](core/Guide/http-client.md) |
 | Đa ngôn ngữ | [translation.md](core/Guide/translation.md) |
 | Collection, Arr, Str, Date | [collection.md](core/Guide/collection.md) |
-| Tổng hợp nhanh: Hash, Snowflake, Context, Mail, Queue | [services.md](core/Guide/services.md) |
+| Tổng hợp nhanh: Hash, Snowflake, Context, Mail | [services.md](core/Guide/services.md) |
 
 Tài liệu riêng của một số package:
 
 - AI (chat, streaming, tool calling, RAG, embedding): [core/AI/README.md](core/AI/README.md)
 - Auth: [core/Auth/README.md](core/Auth/README.md)
-
-### Component chưa ổn định
-
-Các component dưới đây đã có code nhưng **chưa nên dùng cho production**. Tài liệu chưa được viết, hoặc chỉ ghi chú ngắn trong [services.md](core/Guide/services.md):
-
-| Component | Vấn đề |
-|-----------|--------|
-| Queue (Messenger) | Transport `database`: `delay()` và `onQueue()` không có tác dụng, job không có handler làm kẹt queue, worker xử lý tối đa 1 job/giây |
-| Mail | Gửi bằng class `Mailable` có địa chỉ trong `Envelope` bị `TypeError`, `Mail::queue()` chưa được cài đặt. Cách gọi nối tiếp `Mail::to()->subject()->html()->send()` vẫn dùng được |
-| Excel, SEOTool, DomPDF, Image, SocketIO, Websocket, RateLimit, Jwt, Permission, MongoDB, ApiDocs | Chưa có test, chưa được rà soát |
 
 ### Middleware toàn cục và service provider
 

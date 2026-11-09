@@ -114,7 +114,7 @@ Event::dispatch('order.paid', [$orderId]);   // payload truyền thành tham s�
 
 ## 5. Ghi nhớ
 
-- Listener chạy **đồng bộ**, theo thứ tự đăng ký, ngay trong request hiện tại. Với việc chạy lâu (gửi mail, gọi API), có thể chạy nền bằng `Ryra\Core\Coroutine\Coroutine::create(fn () => ...)`. Queue hiện chưa ổn định (xem [services.md](services.md#queue--messenger)).
+- Listener chạy **đồng bộ**, theo thứ tự đăng ký, ngay trong request hiện tại. Với việc chạy lâu (gửi mail, gọi API), có thể chạy nền bằng `Ryra\Core\Coroutine\Coroutine::create(fn () => ...)`.
 - Listener trả về `false` sẽ **dừng** các listener phía sau.
 - `Event::clearListeners(UserRegistered::class)` xoá mọi listener của một event.
-- Tránh dùng wildcard `*` trong tên event. Cách so khớp wildcard hiện tại chưa ổn định, và nó chỉ áp dụng cho các event đã có listener từ trước.
+- Nên đăng ký listener theo đúng tên event (tên class), không dùng ký tự `*`.

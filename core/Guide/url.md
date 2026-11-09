@@ -30,7 +30,7 @@ route('books.show', ['slug' => 'de-men'], absolute: false); // /api/books/de-men
 route('not.exist');                                          // null
 ```
 
-> **Giới hạn hiện tại:** `route()` chưa thay được tham số có regex như `{id:\d+}`. Ví dụ `route('books.find', ['id' => 5])` với `uri: '{id:\d+}'` sẽ sinh ra `/api/books/{id:\d+}?id=5`. Với route cần sinh URL bằng `route()`, hãy khai báo tham số không kèm regex (`{id}`), rồi kiểm tra kiểu dữ liệu bằng type hint `int $id` trong method.
+> **Lưu ý:** với route cần sinh URL bằng `route()`, hãy khai báo tham số dạng `{id}`, không kèm regex như `{id:\d+}`. Kiểu dữ liệu thì kiểm tra bằng type hint `int $id` trong method.
 
 Trong Twig:
 

@@ -89,7 +89,6 @@ App::isStaging();
 | `route($name, $params)` | Sinh URL từ tên route (xem [url.md](url.md)) |
 | `url($path, $query)` | Sinh URL tuyệt đối |
 | `t($key, $params)` | Dịch ngôn ngữ (xem [translation.md](translation.md)) |
-| `dispatch($message)` | Đẩy job vào queue (chưa ổn định, xem [services.md](services.md#queue--messenger)) |
 | `auth($guard)` | Lấy auth manager / guard (xem [core/Auth/README.md](../Auth/README.md)) |
 | `asset($path, $module)` | URL tới file tĩnh của module |
 | `dump(...)` / `dd(...)` | In giá trị để debug (`dd` dừng xử lý request) |

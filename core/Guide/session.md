@@ -41,7 +41,7 @@ SESSION_SAME_SITE=lax
 | `database` | Bảng `sessions` (đổi bằng `SESSION_TABLE`) |
 | `null` | Không lưu (dùng khi test) |
 
-Khi chạy nhiều server phía sau load balancer, hãy dùng `database`. Hiện chưa có driver Redis cho session.
+Khi chạy nhiều server phía sau load balancer, hãy dùng `database`.
 
 Driver `database` **không** tự tạo bảng. Bạn cần tạo trước:
 

@@ -62,7 +62,6 @@ return [
 | `providers` | | Danh sách service provider, chạy theo đúng thứ tự khai báo |
 | `middlewares` | | Middleware áp dụng cho mọi route của module (xem [middleware.md](middleware.md)) |
 | `commands` | | Lệnh console của module (class Symfony Command có `#[AsCommand]`) |
-| `message_handlers` | | Ánh xạ `Message::class => Handler::class` cho queue |
 | `websocket_controllers` | | Controller WebSocket |
 
 Ví dụ đầy đủ:

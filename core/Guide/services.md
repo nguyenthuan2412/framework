@@ -73,26 +73,7 @@ Mail::to('user@example.com')
 Mail::to('user@example.com')->subject('Xin chào')->view('@user/mails/welcome.twig', ['name' => 'An'])->send();
 ```
 
-> ⚠️ **Chưa ổn định.** Cách gọi nối tiếp như trên chạy được. Riêng gửi bằng class `Mailable` (do lệnh `gen:mail` tạo ra) mà có khai báo `to`/`cc`/`bcc`/`replyTo`/`from` trong `Envelope` thì sẽ bị `TypeError`. Ngoài ra `Mail::queue()` chưa được cài đặt, gọi vào không làm gì cả.
-
-## Queue / Messenger
-
-> ⚠️ **Chưa ổn định, chưa nên dùng cho production.** Transport `database` hiện có các lỗi sau:
-> - `delay()` không có tác dụng, job chạy ngay
-> - `onQueue()` bị bỏ qua
-> - Job không có handler làm kẹt cả queue
-> - Worker xử lý tối đa 1 job/giây
-
-```php
-// Đẩy message vào queue
-dispatch(new SendEmailMessage($data));
-
-// Handler khai báo trong .module.php:
-// 'message_handlers' => [SendEmailMessage::class => SendEmailHandler::class]
-// Handler là class có method __invoke(SendEmailMessage $message)
-```
-
-Chạy worker: `php ryra messenger:consume`.
+Chi tiết: [mail.md](mail.md)
 
 ## Context: dữ liệu riêng của request hiện tại
 
