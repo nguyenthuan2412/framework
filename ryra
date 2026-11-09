@@ -2,15 +2,13 @@
 
 $_SERVER['COLLISION_PRINTER'] = 'DefaultPrinter';
 
-use Ryra\Core\Middleware\ConvertEmptyStringsToNull;
 use Ryra\Core\Container\ServiceProviderManager;
+use Ryra\Core\Middleware\ConvertEmptyStringsToNull;
 use Ryra\Core\Middleware\MiddlewareCollection;
 use Ryra\Core\Middleware\TrimStrings;
 use Ryra\Core\Http\Middleware\HandleException;
-use Ryra\Modules\Common\Middlewares\LogRequest;
 use Ryra\Core\Middleware\HandleCors;
 use Ryra\Core\App;
-use Ryra\Modules\Common\Middlewares\SetLocaleFromHeader;
 
 require __DIR__ . '/core/constants.php';
 require __DIR__ . '/core/functions.php';
@@ -24,9 +22,7 @@ $status = App::getInstance()
         $middlewares->use([
             HandleCors::class,
             HandleException::class,
-            LogRequest::class,
             TrimStrings::class,
-            SetLocaleFromHeader::class,
             ConvertEmptyStringsToNull::class,
         ]);
     })
