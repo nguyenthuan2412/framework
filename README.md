@@ -22,8 +22,8 @@ Framework có sẵn: HTTP/WebSocket server, Socket.IO, ORM + Query Builder, Vali
 
 ## 1. Yêu cầu hệ thống
 
-- PHP **8.3+**
-- Extension: `swoole` (5.1+), `mbstring`, `ffi`, `intl`, `zip`, `pdo_mysql`, `redis` (nếu dùng Redis)
+- PHP **8.3+** (Docker dùng 8.5)
+- Extension: `swoole` (5.1+, Docker dùng 6.2), `mbstring`, `ffi`, `intl`, `zip`, `pdo_mysql`, `redis` (nếu dùng Redis)
 - Composer 2
 - MySQL / MariaDB (nếu dùng database)
 - Redis (tuỳ chọn: cache, session, queue)
@@ -43,18 +43,22 @@ cp .env.example .env   # nếu chưa có file mẫu thì tự tạo .env theo m�
 
 ### 2.2. Chạy bằng Docker
 
-Tạo file `.env` ở thư mục gốc, có ít nhất 2 biến để build image:
+Stack gồm 3 service:
 
-```dotenv
-PHP_VERSION=8.3
-COMPOSER_VERSION=2
-```
+| Service | Image | Container | Ghi chú |
+|---|---|---|---|
+| `php` | `phpswoole/swoole:6.2.5-php8.5` | `ryra` | Swoole 6.2, PHP 8.5, cổng `APP_PORT` |
+| `nginx` | `nginx:1.30-alpine` (stable) | `ryra-nginx` | Reverse proxy HTTP/WebSocket → `php:APP_PORT`, cổng `NGINX_PORT` |
+| `mysql` | `mysql:9.7` (LTS) | `ryra-mysql` | Data lưu ở volume `mysql-data`, file `.sql` trong `docker/database/mysql/9.7/initdb` chạy lúc khởi tạo lần đầu |
+
+Copy `.env.example` thành `.env` (đã có sẵn `PHP_VERSION`, `MYSQL_VERSION`, `NGINX_VERSION`, `COMPOSER_VERSION`, `DB_*`...). `DB_HOST` phải là `mysql` (tên service), `DB_USERNAME` không được là `root`.
 
 Sau đó:
 
 ```bash
+cp .env.example .env
 docker compose up -d --build
-docker exec -it tourdb-php bash      # vào container
+docker exec -it ryra bash            # vào container
 composer install
 php ryra start:serve
 ```

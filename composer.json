@@ -75,7 +75,7 @@
         "pestphp/pest": "^4.6"
     },
     "scripts": {
-        "test": "php -d xdebug.mode=coverage ./vendor/bin/phpunit --coverage-html=coverage"
+        "test": "./vendor/bin/phpunit"
     },
     "config": {
         "allow-plugins": {

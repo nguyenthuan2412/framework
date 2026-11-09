@@ -6,9 +6,68 @@ services:
         COMPOSER_VERSION: ${COMPOSER_VERSION}
     restart: "always"
     ports:
-      - "2412:2412"
+      # Truy cập trực tiếp Swoole (gRPC/HTTP2 cũng đi qua cổng này)
+      - "${APP_PORT}:${APP_PORT}"
     image: ryra
     container_name: ryra
     volumes:
       - .:/var/www/html
       - ./docker/php/${PHP_VERSION}/php.ini:/usr/local/etc/php/php.ini
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - ryra
+
+  nginx:
+    image: nginx:${NGINX_VERSION}
+    restart: "always"
+    container_name: ryra-nginx
+    ports:
+      - "${NGINX_PORT}:80"
+    environment:
+      APP_PORT: ${APP_PORT}
+    volumes:
+      - ./docker/nginx/default.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ./storage:/var/www/html/storage:ro
+      - ./docker/logs/nginx:/var/log/nginx
+    depends_on:
+      - php
+    networks:
+      - ryra
+
+  mysql:
+    build:
+      context: ./docker/database/mysql/${MYSQL_VERSION}
+    restart: "always"
+    container_name: ryra-mysql
+    ports:
+      - "${MYSQL_FORWARD_PORT}:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      TZ: ${APP_TIMEZONE}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./docker/database/mysql/${MYSQL_VERSION}/initdb:/docker-entrypoint-initdb.d
+      - ./docker/logs/mysql:/var/log/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - ryra
+
+networks:
+  ryra:
+    driver: bridge
+
+volumes:
+  mysql-data:
