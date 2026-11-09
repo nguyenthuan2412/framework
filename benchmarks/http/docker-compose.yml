@@ -1,0 +1,62 @@
+# Phân CPU cố định để các bên không tranh tài nguyên với nhau:
+#   server (ryra / express / fastify / gin): CPU 0-3 · mysql: CPU 4-5 · wrk: CPU 6-7
+# Mỗi lần chỉ chạy 1 server (run.sh lo việc này).
+name: ryra-bench
+
+x-server: &server
+  cpuset: "0-3"
+  mem_limit: 2g
+  environment:
+    WORKERS: 4
+  depends_on:
+    mysql:
+      condition: service_healthy
+
+services:
+  mysql:
+    image: mysql:9.7
+    cpuset: "4-5"
+    mem_limit: 2g
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: bench
+      MYSQL_USER: bench
+      MYSQL_PASSWORD: bench
+    command: [--max-connections=1000, --innodb-buffer-pool-size=512M]
+    volumes:
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysql -ubench -pbench bench -e 'SELECT COUNT(*) FROM world' >/dev/null 2>&1"]
+      interval: 3s
+      retries: 60
+
+  ryra:
+    <<: *server
+    build:
+      context: ../..
+      dockerfile: benchmarks/http/ryra/Dockerfile
+    environment:
+      WORKERS: 4
+      # Mặc định của Ryra là 100000 (worker restart sau 100k request). 0 = không restart.
+      MAX_REQUEST: ${RYRA_MAX_REQUEST:-100000}
+
+  express:
+    <<: *server
+    build: ./node
+    command: [node, cluster.js, express]
+
+  fastify:
+    <<: *server
+    build: ./node
+    command: [node, cluster.js, fastify]
+
+  gin:
+    <<: *server
+    build: ./go
+
+  wrk:
+    build:
+      context: .
+      dockerfile: wrk.Dockerfile
+    cpuset: "6-7"
+    profiles: [tools]

@@ -1,0 +1,9 @@
+.git
+.env
+.idea
+.history
+vendor
+storage/vietiso/logs
+storage/vietiso/app.pid
+benchmarks/http/node
+benchmarks/http/results
