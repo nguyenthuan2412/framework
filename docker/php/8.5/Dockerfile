@@ -13,9 +13,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libicu-dev \
     # ffi
     libffi-dev \
-    # gRPC: protoc + well-known types (google/protobuf/*.proto)
-    protobuf-compiler \
-    libprotobuf-dev \
     # composer cài package từ source
     git \
     && rm -rf /var/lib/apt/lists/*
@@ -28,9 +25,6 @@ RUN docker-php-ext-configure gd --with-jpeg --with-webp \
     gd \
     pcntl \
     intl
-
-# (Tuỳ chọn) ext protobuf viết bằng C giúp encode/decode gRPC nhanh hơn google/protobuf thuần PHP.
-# RUN pecl install protobuf && docker-php-ext-enable protobuf
 
 ARG COMPOSER_VERSION
 ENV COMPOSER_VERSION=$COMPOSER_VERSION

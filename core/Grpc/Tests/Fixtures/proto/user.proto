@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package user.v1;
+
+import "common/common.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "example.com/user";
+
+/* Người dùng
+ * trong hệ thống */
+message User {
+  int64 id = 1;
+  string full_name = 2;
+  optional string email = 3;
+  sint32 score = 4 [deprecated = true];
+  double balance = 5;
+  bool verified = 6;
+  common.v1.Status status = 7;
+  repeated string tags = 8;
+  map<string, int64> counters = 9;
+  common.v1.Address address = 10;
+  repeated .common.v1.Address history = 11;
+  google.protobuf.Timestamp created_at = 12;
+  bytes avatar = 13;
+  Role role = 14;
+  repeated Item items = 15;
+  oneof contact {
+    string phone = 16;
+    Item primary = 17;
+  }
+  map<int32, Item> by_id = 18;
+  uint32 big = 19;
+  fixed64 fx = 20;
+  float ratio = 21;
+  string userID = 22;
+  reserved 100 to 110;
+
+  enum Role {
+    ROLE_UNKNOWN = 0;
+    ROLE_ADMIN = 1;
+  }
+  message Item {
+    string sku = 1;
+    int32 qty = 2;
+  }
+}
+
+message GetUserRequest { int64 id = 1; }
+
+// Quản lý user
+service UserService {
+  // Lấy 1 user
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc ListUsers(GetUserRequest) returns (stream User);
+  rpc ImportUsers(stream User) returns (GetUserRequest);
+  rpc Chat(stream User) returns (stream User);
+  rpc Ping(google.protobuf.Empty) returns (google.protobuf.Empty) { option deprecated = true; }
+  rpc lowerName(GetUserRequest) returns (google.protobuf.Empty);
+}

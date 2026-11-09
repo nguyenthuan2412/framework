@@ -26,11 +26,9 @@ final class ProtoGenerator
 
     /**
      * @param array<string, string> $options File option thêm vào mọi file (vd go_package, java_multiple_files).
-     * @param string|null $phpNamespace Prefix namespace cho class do protoc sinh ra (dùng khi build nội bộ).
      */
     public function __construct(
         private readonly array $options = [],
-        private readonly ?string $phpNamespace = null,
     ) {}
 
     /**
@@ -44,10 +42,6 @@ final class ProtoGenerator
         $this->files = [];
 
         foreach ($services as $service) {
-            if (self::usesNativeMessages($service)) {
-                // Service dựng từ .proto có sẵn (class protoc), giữ nguyên file .proto gốc.
-                continue;
-            }
             $this->files[$this->file($service->package)]['services'][] = $service;
             foreach ($service->methods as $method) {
                 $this->collectMessage($method->requestClass, $service->package);
@@ -65,26 +59,6 @@ final class ProtoGenerator
         \ksort($output);
 
         return $output;
-    }
-
-    public static function usesNativeMessages(ServiceMetadata $service): bool
-    {
-        foreach ($service->methods as $method) {
-            if (MetadataFactory::isNative($method->requestClass) || MetadataFactory::isNative($method->responseClass)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Package đã gán cho từng class message trong lần generate gần nhất.
-     *
-     * @return array<string, string> class => package
-     */
-    public function messagePackages(): array
-    {
-        return \array_filter($this->packages, static fn ($_, $class) => !\enum_exists($class), \ARRAY_FILTER_USE_BOTH);
     }
 
     public static function fileName(string $package): string
@@ -259,11 +233,6 @@ final class ProtoGenerator
         }
 
         $options = $this->options;
-        if ($this->phpNamespace !== null) {
-            $namespace = $this->phpNamespaceFor($package);
-            $options['php_namespace'] = $namespace;
-            $options['php_metadata_namespace'] = $namespace . '\\GPBMetadata';
-        }
         foreach ($options as $key => $value) {
             $value = \is_bool($value) ? ($value ? 'true' : 'false') : '"' . \addcslashes((string) $value, '"\\') . '"';
             $header[] = "option $key = $value;";
@@ -273,13 +242,6 @@ final class ProtoGenerator
         }
 
         return \implode("\n", $header) . "\n" . \implode("\n\n", $body) . "\n";
-    }
-
-    public function phpNamespaceFor(string $package): string
-    {
-        $parts = \array_filter(\explode('.', $package), static fn ($part) => $part !== '');
-        $parts = \array_map(static fn ($part) => \str_replace(' ', '', \ucwords(\str_replace('_', ' ', $part))), $parts);
-        return \implode('\\', [$this->phpNamespace, ...$parts]);
     }
 
     /**

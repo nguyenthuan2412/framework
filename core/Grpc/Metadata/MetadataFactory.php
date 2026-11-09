@@ -37,14 +37,6 @@ final class MetadataFactory
     /** @var array<string, ServiceMetadata> */
     private static array $services = [];
 
-    /**
-     * Class do protoc sinh ra (kế thừa Google\Protobuf\Internal\Message), dùng trực tiếp không cần map.
-     */
-    public static function isNative(string $class): bool
-    {
-        return \is_subclass_of($class, \Google\Protobuf\Internal\Message::class);
-    }
-
     public static function forMessage(string $class): MessageMetadata
     {
         return self::$messages[$class] ??= self::buildMessage($class);
@@ -76,9 +68,6 @@ final class MetadataFactory
         }
 
         $reflection = new ReflectionClass($class);
-        if (self::isNative($class)) {
-            throw new MetadataException("[$class] is a protoc generated class, it has no #[Message] metadata");
-        }
         if ($reflection->isAbstract() || $reflection->isInterface() || $reflection->isEnum()) {
             throw new MetadataException("Message [$class] must be a concrete class");
         }
@@ -247,9 +236,6 @@ final class MetadataFactory
         if ($class === \DateTimeInterface::class || \is_a($class, \DateTimeInterface::class, true)) {
             return [Type::Timestamp, $class];
         }
-        if (self::isNative($class)) {
-            throw new MetadataException("Protoc generated class [$class] cannot be used inside a #[Message] class on $location");
-        }
         if (\class_exists($class)) {
             return [Type::Message, $class];
         }
@@ -405,9 +391,7 @@ final class MetadataFactory
 
         // Validate sớm để lỗi khai báo hiện ra ngay khi đăng ký service.
         foreach ([$requestClass, $responseClass] as $messageClass) {
-            if (!self::isNative($messageClass)) {
-                self::forMessage($messageClass);
-            }
+            self::forMessage($messageClass);
         }
 
         return new MethodMetadata(

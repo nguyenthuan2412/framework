@@ -4,7 +4,6 @@ namespace Ryra\Core\Grpc\Tests;
 
 use PHPUnit\Framework\TestCase;
 use Ryra\Core\Grpc\Metadata\MetadataFactory;
-use Ryra\Core\Grpc\ProtoCompiler;
 use Ryra\Core\Grpc\ProtoGenerator;
 use Ryra\Core\Grpc\Protobuf\Codec;
 use Ryra\Core\Grpc\Tests\Fixtures\Address;
@@ -15,16 +14,11 @@ use Ryra\Core\Grpc\Tests\Fixtures\UserStatus;
 
 class CodecTest extends TestCase
 {
-    private static string $buildPath;
-
     private static Codec $codec;
 
     public static function setUpBeforeClass(): void
     {
-        self::$buildPath = sys_get_temp_dir() . '/ryra_grpc_test';
-        $compiler = new ProtoCompiler(self::$buildPath, 'RyraGrpcTestStub');
-        $compiler->compile([MetadataFactory::forService(UserService::class)]);
-        self::$codec = new Codec(require $compiler->classMapPath());
+        self::$codec = new Codec();
     }
 
     public function test_generates_proto_files(): void

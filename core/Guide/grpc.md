@@ -2,44 +2,27 @@
 
 Viết service và message bằng **class PHP + attribute**, framework tự sinh file `.proto`. Bạn không phải viết `.proto` bằng tay.
 
-Bên dưới dùng các thư viện chính chủ:
+Không cần `protoc`, `google/protobuf` hay ext `protobuf`:
 
-- [google/protobuf](https://github.com/protocolbuffers/protobuf/tree/main/php): encode/decode message.
-- `protoc`: compile `.proto` ra class PHP.
-- HTTP/2 của Swoole: transport (giống Hyperf). Server gRPC chạy **chung port** với HTTP server.
-
-Cách hoạt động:
+- Encode/decode: framework tự đọc/ghi wire format protobuf. Lần đầu gặp một class `#[Message]`, framework sinh sẵn encoder/decoder riêng cho class đó (đọc/ghi thẳng property ⇄ bytes) và cache trong worker.
+- Transport: HTTP/2 của Swoole. Server gRPC chạy **chung port** với HTTP server.
 
 ```
-#[Message] / #[Service] (class PHP)
-        │  php ryra grpc:generate
-        ▼
-storage/grpc/proto/*.proto  ──protoc──▶  storage/grpc/php/GrpcStub/... (class google/protobuf)
-        │
-        ▼
-Lúc chạy: DTO của bạn ⇄ class google/protobuf ⇄ binary
+#[Message] / #[Service] (class PHP)  ⇄  binary protobuf          (lúc chạy)
+#[Message] / #[Service]  ──grpc:proto──▶  file .proto           (gửi cho team khác)
+file .proto của team khác ──grpc:dto──▶  #[Message] / #[Service] (gọi service của họ)
 ```
 
 ## 1. Cài đặt
 
-Cần có `protoc`:
-
-```bash
-brew install protobuf                                   # macOS
-apt-get install -y protobuf-compiler libprotobuf-dev    # Debian/Ubuntu (Dockerfile đã có sẵn)
-```
-
-Server phải bật HTTP/2. Trong [config/app.php](../../config/app.php) đã bật sẵn `Constant::OPTION_OPEN_HTTP2_PROTOCOL => true`.
+Không cần cài thêm gì. Server phải bật HTTP/2. Trong [config/app.php](../../config/app.php) đã bật sẵn `Constant::OPTION_OPEN_HTTP2_PROTOCOL => true`.
 
 Cấu hình nằm ở [config/grpc.php](../../config/grpc.php):
 
 ```dotenv
 GRPC_ENABLED=true
-GRPC_PROTOC=protoc           # đường dẫn tới protoc nếu không có trong PATH
 GRPC_CLIENT_ADDRESS=127.0.0.1:9090
 ```
-
-> Muốn encode/decode nhanh hơn thì cài thêm ext C: `pecl install protobuf`. Không cần sửa code.
 
 ## 2. Message
 
@@ -198,10 +181,11 @@ throw GrpcException::unauthenticated();
 
 Exception khác không bắt sẽ trả về `INTERNAL`. Khi `APP_DEBUG=true`, message lỗi sẽ chứa tên class và nội dung exception.
 
-## 4. Sinh code & file .proto
+## 4. Xuất file .proto
+
+Không có bước build: sửa message/service xong là chạy được ngay.
 
 ```bash
-php ryra grpc:generate        # sinh .proto + chạy protoc => storage/grpc (chạy lại mỗi khi sửa message/service)
 php ryra grpc:proto           # xuất .proto sạch ra thư mục proto/ để gửi cho team khác (Go, Node, Java, ...)
 php ryra grpc:proto --dry-run # chỉ in ra màn hình
 php ryra grpc:list            # liệt kê các rpc
@@ -230,8 +214,6 @@ message User {
 ```
 
 Thêm option cho các ngôn ngữ khác qua `config/grpc.php` → `proto.options`, ví dụ `'go_package' => 'example.com/gen/userpb'`.
-
-> Thư mục `storage/grpc` là build output, đã nằm trong `.gitignore`. Khi deploy, nhớ chạy `php ryra grpc:generate` trước khi start server.
 
 ## 5. Interceptor
 
@@ -290,28 +272,39 @@ $user = Grpc::connection('default')->unary('/user.v1.UserService/GetUser', new G
 - Nếu gọi ngoài coroutine (ví dụ trong một command), client tự bọc lời gọi trong `Coroutine\run`.
 - Khi server trả lỗi, client ném `GrpcException`, đọc mã lỗi qua `$e->status`.
 
-## 7. Dùng file .proto có sẵn (proto-first, giống Hyperf)
+## 7. Dùng file .proto có sẵn (`grpc:dto`)
 
-Khi cần gọi hoặc implement service mà team khác đã định nghĩa bằng `.proto`:
+Khi cần gọi hoặc implement service mà team khác đã định nghĩa bằng `.proto`, sinh DTO từ file đó:
 
-```php
-// config/grpc.php
-'proto_paths' => [base_path('proto/vendor')],
+```bash
+php ryra grpc:dto proto/vendor/payment.proto --module=Billing
+# => modules/billing/src/Grpc/Payment/V1/{ChargeRequest,ChargeReply,PaymentService,...}.php
+#    namespace Ryra\Modules\Billing\Grpc\Payment\V1
+
+php ryra grpc:dto a.proto b.proto --namespace='App\Grpc' --output=app/Grpc   # không dùng module
+php ryra grpc:dto payment.proto --module=Billing -I proto/vendor               # thư mục tìm file import
+php ryra grpc:dto payment.proto --module=Billing --dry-run                     # chỉ in ra màn hình
 ```
 
-`php ryra grpc:generate` sẽ compile luôn các file này. Class sinh ra theo `package` (hoặc `option php_namespace`) và được autoload sẵn. Có thể dùng các class đó trực tiếp trong service hoặc client, framework không map gì thêm:
+- File được `import` sẽ được sinh kèm. Import được tìm trong thư mục của file đang import, các thư mục `-I`, `config/grpc.php` → `dto.include_paths` và thư mục gốc project.
+- Mỗi package proto là một sub namespace (`payment.v1` → `Payment\V1`). Message/enum lồng nhau được làm phẳng: `Order.Item` → `OrderItem`.
+- Service sinh ra là **interface** `#[Service]`. Client gọi thẳng qua interface, server implement interface đó:
 
 ```php
-#[Service(package: 'payment.v1', name: 'PaymentService')]
-class PaymentService
+use Ryra\Modules\Billing\Grpc\Payment\V1\{ChargeRequest, PaymentService};
+
+$reply = Grpc::service(PaymentService::class, 'payment')->charge(new ChargeRequest(amount: 1000));
+
+class PaymentServiceImpl implements PaymentService
 {
-    public function charge(\Payment\V1\ChargeRequest $request): \Payment\V1\ChargeReply { ... }
+    public function charge(ChargeRequest $request, ServerContext $context): ChargeReply { ... }
 }
-
-$reply = Grpc::connection('payment')->unary('/payment.v1.PaymentService/Charge', $request, \Payment\V1\ChargeReply::class);
 ```
 
-Service dùng class protoc sẽ không được xuất ra bằng `grpc:proto`, vì `.proto` gốc đã có sẵn.
+- Class sinh ra có header `DO NOT EDIT`. Khi `.proto` thay đổi thì chạy lại lệnh (file cũ bị ghi đè).
+- Hỗ trợ: proto3, message, enum, service (unary/stream), `repeated`, `map`, `optional`, `oneof`, message lồng nhau, `import`, `google.protobuf.Timestamp`, `google.protobuf.Empty`, comment.
+- `oneof`: mỗi field trong oneof thành một property nullable riêng. Framework không tự kiểm tra chỉ có một field được gán.
+- Không hỗ trợ (báo lỗi rõ ràng): proto2, editions, `extensions`/`extend`, `group`, các well-known type khác (`Duration`, `Any`, `Struct`, wrapper, ...).
 
 ## 8. Health check
 
@@ -327,7 +320,8 @@ HealthService::setStatus('user.v1.UserService', ServingStatus::NOT_SERVING);
 ## 9. Test bằng grpcurl
 
 ```bash
-grpcurl -plaintext -import-path storage/grpc/proto -proto example.v1.proto \
+php ryra grpc:proto
+grpcurl -plaintext -import-path proto -proto example.v1.proto \
   -d '{"name":"Ryra"}' localhost:9090 example.v1.GreeterService/SayHello
 ```
 
@@ -337,4 +331,5 @@ Module `example` có sẵn một service mẫu ở [modules/example/src/Grpc](..
 
 - **Streaming được buffer**: Swoole 5.1 không hỗ trợ `write()` trên HTTP/2. Server streaming gom hết message rồi mới gửi một lần. Client streaming cũng chỉ xử lý sau khi nhận đủ request. Kết quả vẫn đúng chuẩn gRPC, nhưng không đẩy dữ liệu theo thời gian thực. Chưa hỗ trợ bidirectional streaming.
 - Chưa có gRPC server reflection. Khi dùng grpcurl hoặc Postman, cần trỏ tới file `.proto`.
-- Chưa hỗ trợ `oneof` và `uint64` lớn hơn `PHP_INT_MAX`.
+- `uint64`/`fixed64` lớn hơn `PHP_INT_MAX` được đọc thành số âm (cùng bit, PHP không có số nguyên không dấu 64-bit).
+- Decode field `string` không kiểm tra UTF-8 hợp lệ.

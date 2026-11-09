@@ -52,8 +52,7 @@
         "chrome-php/chrome": "^1.15",
         "symfony/http-client": "^7.4",
         "omnipay/common": "^3.5",
-        "spomky-labs/otphp": "^11.4",
-        "google/protobuf": "^4.29"
+        "spomky-labs/otphp": "^11.4"
     },
     "autoload": {
         "psr-4": {

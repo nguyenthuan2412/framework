@@ -5,5 +5,4 @@ storage/vietiso/logs
 storage/vietiso/app.pid
 .idea
 minio-data
-storage/grpc
 storage/runtime

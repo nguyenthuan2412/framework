@@ -29,26 +29,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Build (google/protobuf + protoc)
+    | Sinh DTO từ .proto (`php ryra grpc:dto`)
     |--------------------------------------------------------------------------
     |
-    | `php ryra grpc:generate` sinh .proto từ class rồi dùng protoc để sinh class
-    | google/protobuf vào build_path. Chạy lại lệnh này mỗi khi sửa message/service.
+    | Dùng .proto có sẵn (vd của service khác): sinh class #[Message], enum, interface
+    | #[Service] vào module. Không cần protoc hay google/protobuf.
     |
     */
 
-    'protoc' => env('GRPC_PROTOC', 'protoc'),
-
-    'build_path' => storage_path('grpc'),
-
-    // Namespace gốc cho class protoc sinh ra từ DTO.
-    'namespace' => 'GrpcStub',
-
-    // Thư mục chứa .proto có sẵn (của team khác) cần biên dịch thêm để dùng trực tiếp class protoc.
-    'proto_paths' => [],
-
-    // Thư mục include thêm cho protoc.
-    'include_paths' => [],
+    'dto' => [
+        // Thư mục tìm file import (ngoài thư mục của file đang import và thư mục gốc project).
+        'include_paths' => [],
+    ],
 
     /*
     |--------------------------------------------------------------------------

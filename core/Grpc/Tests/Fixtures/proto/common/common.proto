@@ -1,0 +1,14 @@
+syntax = "proto3";
+package common.v1;
+
+// Địa chỉ
+message Address {
+  string street = 1;
+  string city = 2; // trailing comment, bỏ qua
+}
+
+enum Status {
+  STATUS_UNSPECIFIED = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_IN_PROGRESS = 2;
+}
