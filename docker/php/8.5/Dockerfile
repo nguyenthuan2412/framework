@@ -3,7 +3,7 @@ FROM phpswoole/swoole:6.2.5-php8.5
 # Image gốc đã có sẵn: swoole, pdo, pdo_mysql, mysqlnd, ctype, fileinfo, sockets, curl, openssl, redis, mbstring...
 # Chỉ cài thêm thư viện để build các extension còn thiếu + công cụ cần cho project.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    # gd (intervention/image, phpspreadsheet, flmngr)
+    # gd (intervention/image, phpspreadsheet)
     libpng-dev \
     libjpeg-dev \
     libwebp-dev \

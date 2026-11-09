@@ -3,7 +3,6 @@
         "twig/twig": "^3.1",
         "symfony/console": "^7.4",
         "nesbot/carbon": "^3.6",
-        "swoole/ide-helper": "^5.1",
         "vlucas/phpdotenv": "^5.6",
         "symfony/finder": "^7.1",
         "nikic/fast-route": "^1.3",
@@ -16,27 +15,18 @@
         "ext-ffi": "*",
         "ext-swoole": "*",
         "cydrickn/socketio": "^1.6",
-        "symfony/google-mailer": "^7.1",
         "giggsey/libphonenumber-for-php": "^8.13",
         "filp/whoops": "^2.16",
         "symfony/uid": "^7.2",
         "voku/portable-ascii": "^2.0",
         "doctrine/sql-formatter": "^1.5",
-        "symfony/twig-bridge": "^7.2",
         "league/commonmark": "^2.6",
-        "twig/extra-bundle": "^3.20",
-        "twig/markdown-extra": "^3.12",
         "psr/container": "^2.0",
         "symfony/mailtrap-mailer": "^7.2",
         "league/flysystem": "^3.0",
-        "php-ffmpeg/php-ffmpeg": "^1.3",
-        "lcobucci/jwt": "^5.5",
-        "lcobucci/clock": "^3.3",
         "elasticsearch/elasticsearch": "^9.0",
-        "edsdk/flmngr-server-php": "^1.5",
         "intervention/image": "^3.11",
         "nikic/php-parser": "^5.5",
-        "nextpaygroup/payon-php-sdk": "^1.0",
         "godruoyi/php-snowflake": "^3.2",
         "zircote/swagger-php": "^5.1",
         "psr/simple-cache": "^3.0",
@@ -46,13 +36,7 @@
         "league/flysystem-aws-s3-v3": "^3.0",
         "php-amqplib/php-amqplib": "^3.7",
         "ext-zip": "*",
-        "spatie/image-optimizer": "^1.8",
-        "chrisullyott/human-name-parser": "^2.0",
-        "brick/money": "^0.12.0",
-        "chrome-php/chrome": "^1.15",
-        "symfony/http-client": "^7.4",
-        "omnipay/common": "^3.5",
-        "spomky-labs/otphp": "^11.4"
+        "symfony/http-client": "^7.4"
     },
     "autoload": {
         "psr-4": {
@@ -62,16 +46,11 @@
             "./core/autoload_modules.php"
         ]
     },
-    "autoload-dev": {
-        "psr-4": {
-            "Ryra\\Benchmark\\": "./benchmark"
-        }
-    },
     "require-dev": {
         "symfony/var-dumper": "^7.1",
         "phpunit/phpunit": "^12.5",
-        "phpbench/phpbench": "^1.3",
-        "pestphp/pest": "^4.6"
+        "pestphp/pest": "^4.6",
+        "swoole/ide-helper": "^5.1"
     },
     "scripts": {
         "test": "./vendor/bin/phpunit"
