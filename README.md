@@ -255,10 +255,14 @@ class StoreBookDTO extends ValidatedDTO
 ```bash
 php ryra start:serve
 curl http://localhost:9090/api/books
-curl -X POST http://localhost:9090/api/books -H 'Content-Type: application/json' -d '{"title":"Dế Mèn"}'
+curl -X POST http://localhost:9090/api/books \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"title":"Dế Mèn"}'
 ```
 
 > Swoole giữ code trong bộ nhớ, nên sau khi sửa code cần khởi động lại server, hoặc chạy với `--watch`.
+
+> Client gọi API nên luôn gửi header `Accept: application/json`, để lỗi validate được trả về dạng JSON (status 422). Nếu thiếu header này, framework có thể redirect thay vì trả JSON.
 
 Xem thêm module mẫu đầy đủ (có service, provider, view Twig) tại [modules/example/](modules/example/).
 
@@ -276,30 +280,65 @@ Chạy `php ryra list` để xem toàn bộ lệnh.
 | `php ryra gen:middleware <tên> --module=<m>` | Tạo middleware |
 | `php ryra gen:provider <tên> --module=<m>` | Tạo service provider |
 | `php ryra gen:mail <tên> --module=<m>` | Tạo Mailable |
-| `php ryra messenger:consume` | Chạy worker xử lý queue |
+| `php ryra messenger:consume` | Chạy worker xử lý queue (chưa ổn định, xem mục 8) |
 | `php ryra test --module=<m>` | Chạy test Pest trong `modules/<m>/tests` |
 
 Các lệnh `gen:*` có thêm tuỳ chọn `-f` / `--force` để ghi đè file đã tồn tại.
 
 ## 8. Tài liệu chi tiết
 
-Hướng dẫn chi tiết từng phần nằm trong [core/Guide/](core/Guide/):
+Hướng dẫn chi tiết từng phần nằm trong [core/Guide/](core/Guide/).
+
+### Xây dựng API / trang web
 
 | Chủ đề | File |
 |--------|------|
-| Tạo module | [module.md](core/Guide/module.md) |
+| Tạo module, các khoá trong `.module.php` | [module.md](core/Guide/module.md) |
 | Controller & route (`#[Group]`, `#[Get]`, `#[Post]`, ...) | [controller.md](core/Guide/controller.md) |
 | Đọc dữ liệu request (query, body, header, file upload, ...) | [request.md](core/Guide/request.md) |
+| Trả response: JSON, view, redirect, download, stream, lỗi HTTP | [response.md](core/Guide/response.md) |
 | DTO & toàn bộ rule validate | [dto.md](core/Guide/dto.md) |
 | Middleware (toàn cục / module / group / route) | [middleware.md](core/Guide/middleware.md) |
+| Session, flash, old input | [session.md](core/Guide/session.md) |
+| Sinh URL, URL theo tên route, signed URL | [url.md](core/Guide/url.md) |
+
+### Dữ liệu
+
+| Chủ đề | File |
+|--------|------|
 | Model, quan hệ, accessor/mutator, soft delete | [model.md](core/Guide/model.md) |
 | Query Builder, raw query, transaction | [query-database.md](core/Guide/query-database.md) |
-| Service có sẵn: DI, Cache, Redis, Log, Mail, Queue, Event, Hash, Snowflake | [services.md](core/Guide/services.md) |
+| Phân trang theo số trang / theo con trỏ | [pagination.md](core/Guide/pagination.md) |
+| Cache (database / file / redis) & Redis | [cache.md](core/Guide/cache.md) |
+| Lưu trữ file (local / S3 / MinIO), lưu file upload | [filesystem.md](core/Guide/filesystem.md) |
+
+### Nền tảng & tiện ích
+
+| Chủ đề | File |
+|--------|------|
+| Container, Service Provider, dependency injection | [container.md](core/Guide/container.md) |
+| Cấu hình, `.env`, môi trường, hàm helper toàn cục | [config.md](core/Guide/config.md) |
+| Event & listener | [event.md](core/Guide/event.md) |
+| Ghi log | [log.md](core/Guide/log.md) |
+| Gọi API bên ngoài (HTTP Client) | [http-client.md](core/Guide/http-client.md) |
+| Đa ngôn ngữ | [translation.md](core/Guide/translation.md) |
+| Collection, Arr, Str, Date | [collection.md](core/Guide/collection.md) |
+| Tổng hợp nhanh: Hash, Snowflake, Context, Mail, Queue | [services.md](core/Guide/services.md) |
 
 Tài liệu riêng của một số package:
 
 - AI (chat, streaming, tool calling, RAG, embedding): [core/AI/README.md](core/AI/README.md)
 - Auth: [core/Auth/README.md](core/Auth/README.md)
+
+### Component chưa ổn định
+
+Các component dưới đây đã có code nhưng **chưa nên dùng cho production**. Tài liệu chưa được viết, hoặc chỉ ghi chú ngắn trong [services.md](core/Guide/services.md):
+
+| Component | Vấn đề |
+|-----------|--------|
+| Queue (Messenger) | Transport `database`: `delay()` và `onQueue()` không có tác dụng, job không có handler làm kẹt queue, worker xử lý tối đa 1 job/giây |
+| Mail | Gửi bằng class `Mailable` có địa chỉ trong `Envelope` bị `TypeError`, `Mail::queue()` chưa được cài đặt. Cách gọi nối tiếp `Mail::to()->subject()->html()->send()` vẫn dùng được |
+| Excel, SEOTool, DomPDF, Image, SocketIO, Websocket, RateLimit, Jwt, Permission, MongoDB, ApiDocs | Chưa có test, chưa được rà soát |
 
 ### Middleware toàn cục và service provider
 
@@ -316,7 +355,7 @@ App::getInstance()
         ]);
     })
     ->withProviders(static function (ServiceProviderManager $providers): void {
-        // đăng ký thêm provider tại đây
+        // $providers->register(AppServiceProvider::class);
     })
     ->start();
 ```
@@ -327,7 +366,19 @@ App::getInstance()
 
 Ứng dụng chạy liên tục trong bộ nhớ, không khởi động lại sau mỗi request như PHP-FPM:
 
-- **Không lưu dữ liệu riêng của từng request vào biến `static` hay singleton.** Dữ liệu đó sẽ bị dùng chung giữa các request và giữa các người dùng. Thông tin người dùng hiện tại nên lấy qua `Context`.
+- **Không lưu dữ liệu riêng của từng request vào biến `static` hay singleton.** Dữ liệu đó sẽ bị dùng chung giữa các request và giữa các người dùng. Hãy dùng `Context` hoặc service đăng ký dạng `scoped` (xem [container.md](core/Guide/container.md)).
+- **Service phải được đăng ký trong provider thì mới inject được.** Container không tự tạo class chưa đăng ký: tham số đó nhận `null`, dẫn tới `TypeError`.
 - **Sửa code xong phải khởi động lại server**, hoặc chạy với `--watch` khi dev.
 - Không dùng `exit()` / `die()` trong code xử lý request.
 - I/O (DB, Redis, HTTP client) chạy theo coroutine nhờ `SWOOLE_HOOK_ALL`. Không dùng hàm blocking không được hook.
+
+## 10. Khác biệt cần nhớ nếu bạn quen Laravel
+
+| | Laravel | Ryra |
+|---|---------|------|
+| Toán tử trong `where` | `where('price', '>', 100)` | `where('price', 100, '>')` (toán tử ở **cuối**) |
+| Toán tử trong `join` | `join('b', 'a.id', '=', 'b.a_id')` | `join('b', 'a.id', 'b.a_id')` (toán tử ở cuối, mặc định `=`) |
+| Khai báo route | File `routes/*.php` | Attribute `#[Get]`, `#[Post]`, ... trên controller |
+| Validate | `FormRequest` / `$request->validate()` | `ValidatedDTO` với attribute rule |
+| Dependency injection | Tự tạo mọi class | Chỉ inject được class đã đăng ký trong provider |
+| Vòng đời | Mỗi request khởi động lại | Server chạy liên tục (Swoole), singleton dùng chung cho mọi request |

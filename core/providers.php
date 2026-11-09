@@ -34,7 +34,6 @@ return [
     \Ryra\Core\DomPDF\PDFServiceProvider::class,
     \Ryra\Core\Twig\TwigServiceProvider::class,
     \Ryra\Core\Module\ModuleServiceProvider::class,
-    \Ryra\Core\Datastar\DatastarServiceProvider::class,
     \Ryra\Core\ApiDocs\ApiDocsServiceProvider::class,
     \Ryra\Core\Excel\ExcelServiceProvider::class,
     \Ryra\Core\Jwt\JWTServiceProvider::class,

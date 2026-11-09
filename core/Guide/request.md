@@ -537,7 +537,7 @@ class BookController
         }
 
         // Upload và lưu
-        $path = $file->store('books/covers');
+        $path = $file->move('books/covers'); // lưu vào storage/public/books/covers, trả về đường dẫn tương đối
         $book->cover_url = $path;
         $book->save();
 

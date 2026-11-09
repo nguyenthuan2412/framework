@@ -16,7 +16,6 @@ require __DIR__ . '/Translation/functions.php';
 require __DIR__ . '/Url/functions.php';
 require __DIR__ . '/Asset/functions.php';
 require __DIR__ . '/Auth/functions.php';
-require __DIR__ . '/Datastar/functions.php';
 
 function env(string $key, mixed $default = null): mixed
 {

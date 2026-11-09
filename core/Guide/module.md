@@ -51,7 +51,55 @@ return [
 ];
 ```
 
-## Bước 3: Đăng ký controller và provider
-- Controller được nạp tự động từ mảng `controllers`
-- Service provider được khởi động (boot) theo đúng thứ tự khai báo
-- Module được nạp tự động qua `autoload_modules.php`
+## Bước 3: Các khoá trong file khai báo module
+
+| Khoá | Bắt buộc | Mô tả |
+|------|----------|-------|
+| `name` | Có | Tên hiển thị của module |
+| `description` | | Mô tả module |
+| `prefix` | | Tiền tố URL cho mọi route trong module, gắn trước prefix của `#[Group]` |
+| `controllers` | | Danh sách controller HTTP. Route được đọc từ attribute trong các class này |
+| `providers` | | Danh sách service provider, chạy theo đúng thứ tự khai báo |
+| `middlewares` | | Middleware áp dụng cho mọi route của module (xem [middleware.md](middleware.md)) |
+| `commands` | | Lệnh console của module (class Symfony Command có `#[AsCommand]`) |
+| `message_handlers` | | Ánh xạ `Message::class => Handler::class` cho queue |
+| `websocket_controllers` | | Controller WebSocket |
+
+Ví dụ đầy đủ:
+
+```php
+<?php
+
+use Ryra\Modules\Book\Controllers\BookController;
+use Ryra\Modules\Book\Providers\BookServiceProvider;
+use Ryra\Modules\Book\Commands\SyncBooksCommand;
+use Ryra\Core\Session\Middleware\StartSession;
+
+return [
+    'name' => 'Book',
+    'description' => 'Quản lý sách',
+    'prefix' => '',
+
+    'controllers' => [
+        BookController::class,
+    ],
+
+    'providers' => [
+        BookServiceProvider::class,
+    ],
+
+    'middlewares' => [
+        StartSession::class,
+    ],
+
+    'commands' => [
+        SyncBooksCommand::class,
+    ],
+];
+```
+
+## Ghi nhớ
+- Module được nạp tự động. Chỉ cần thư mục nằm trong `modules/` và có file `{ten_module}.module.php`
+- Namespace của module là `Ryra\Modules\{TenModule}`, ánh xạ tới `modules/{ten_module}/src/`
+- View Twig trong `views/` được gọi bằng `Response::view('file.twig')` từ controller của chính module đó, hoặc `@{ten_module}/file.twig` từ nơi khác
+- Các lệnh `gen:controller` và `gen:provider` tự thêm class vào file khai báo module
