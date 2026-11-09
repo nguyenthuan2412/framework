@@ -5,6 +5,7 @@ namespace Ryra\Core\Grpc\Protobuf;
 use Google\Protobuf\GPBEmpty;
 use Google\Protobuf\Internal\Message as NativeMessage;
 use Google\Protobuf\Timestamp;
+use Ryra\Core\Grpc\Exception\DecodeException;
 use Ryra\Core\Grpc\Exception\MetadataException;
 use Ryra\Core\Grpc\Messages\EmptyMessage;
 use Ryra\Core\Grpc\Metadata\FieldMetadata;
@@ -16,6 +17,10 @@ use Ryra\Core\Grpc\Metadata\MetadataFactory;
  * - Class do protoc sinh ra: dùng trực tiếp serializeToString / mergeFromString.
  * - Class #[Message] (DTO): map sang class protoc tương ứng (được sinh bởi `grpc:generate`)
  *   rồi để google/protobuf serialize.
+ *
+ * Việc map DTO <-> class protoc được "biên dịch" một lần cho mỗi class thành closure chuyên biệt
+ * (đọc/ghi property, gọi getter theo tên cố định, không match theo kiểu field ở mỗi lần gọi),
+ * nên chi phí còn lại gần như chỉ là của google/protobuf.
  */
 final class Codec
 {
@@ -24,6 +29,33 @@ final class Codec
 
     /** @var array<string, string> */
     private static array $methodNames = [];
+
+    /** @var array<string, \ReflectionClass> */
+    private static array $reflections = [];
+
+    private static ?\DateTimeZone $timezone = null;
+
+    /** @var array<string, string> DTO hoặc class protoc => class protoc */
+    private array $nativeClasses = [];
+
+    /** @var array<string, \Closure(object): NativeMessage> */
+    private array $encoders = [];
+
+    /** @var array<string, \Closure(NativeMessage): object> */
+    private array $decoders = [];
+
+    /** @var array<string, \Closure(object): string> */
+    private array $wireEncoders = [];
+
+    /** @var array<string, \Closure(string): object> */
+    private array $wireDecoders = [];
+
+    private ?WireCompiler $wireCompiler = null;
+
+    private const MAX_DEPTH = 100;
+
+    /** Độ sâu decode hiện tại của message đệ quy (mỗi coroutine decode đồng bộ, không yield giữa chừng). */
+    private int $depth = 0;
 
     /**
      * @param array<string, string> $classMap DTO class => class do protoc sinh ra.
@@ -36,21 +68,28 @@ final class Codec
     public function addClassMap(array $classMap): void
     {
         $this->classMap = $classMap + $this->classMap;
+        $this->nativeClasses = $this->encoders = $this->decoders = [];
     }
 
     public function nativeClass(string $class): string
     {
-        if (MetadataFactory::isNative($class)) {
-            return $class;
+        if (isset($this->nativeClasses[$class])) {
+            return $this->nativeClasses[$class];
         }
-        return $this->classMap[$class] ?? throw new MetadataException(
+        if (MetadataFactory::isNative($class)) {
+            return $this->nativeClasses[$class] = $class;
+        }
+        return $this->nativeClasses[$class] = $this->classMap[$class] ?? throw new MetadataException(
             "Message [$class] has not been compiled yet. Run `php ryra grpc:generate`."
         );
     }
 
     public function encode(object $message): string
     {
-        return $this->toNative($message)->serializeToString();
+        if ($message instanceof NativeMessage) {
+            return $message->serializeToString();
+        }
+        return ($this->wireEncoders[$message::class] ??= $this->wire()->encoder($message::class))($message);
     }
 
     /**
@@ -60,9 +99,87 @@ final class Codec
      */
     public function decode(string $bytes, string $class): object
     {
-        $native = new ($this->nativeClass($class))();
-        $native->mergeFromString($bytes);
-        return MetadataFactory::isNative($class) ? $native : $this->fromNative($native, $class);
+        if (isset($this->wireDecoders[$class])) {
+            return $this->wireDecoders[$class]($bytes);
+        }
+        if (MetadataFactory::isNative($class)) {
+            $native = new $class();
+            $native->mergeFromString($bytes);
+            return $native;
+        }
+        return ($this->wireDecoders[$class] = $this->wire()->decoder($class))($bytes);
+    }
+
+    // ------------------------------------------------------------------
+    // Wire format trực tiếp (DTO <-> bytes), dùng bởi code do WireCompiler sinh ra
+    // ------------------------------------------------------------------
+
+    private function wire(): WireCompiler
+    {
+        return $this->wireCompiler ??= new WireCompiler($this);
+    }
+
+    /**
+     * @internal
+     */
+    public function wireEncoder(string $class): \Closure
+    {
+        return $this->wireEncoders[$class] ??= $this->wire()->encoder($class);
+    }
+
+    /**
+     * @internal
+     */
+    public function wireDecoder(string $class): \Closure
+    {
+        return $this->wireDecoders[$class] ??= $this->wire()->decoder($class);
+    }
+
+    /**
+     * Decode message con thuộc type đệ quy, có giới hạn độ sâu (giống google/protobuf).
+     *
+     * @internal
+     */
+    public function decodeNested(string $bytes, string $class): object
+    {
+        if ($this->depth >= self::MAX_DEPTH) {
+            throw new DecodeException('Message nesting exceeds ' . self::MAX_DEPTH . ' levels');
+        }
+        $this->depth++;
+        try {
+            return ($this->wireDecoders[$class] ?? $this->wireDecoder($class))($bytes);
+        } finally {
+            $this->depth--;
+        }
+    }
+
+    /**
+     * Bảng encoder theo class (tham chiếu), để code sinh ra gọi thẳng encoder của message con.
+     *
+     * @internal
+     * @return array<string, \Closure(object): string>
+     */
+    public function &wireEncoders(): array
+    {
+        return $this->wireEncoders;
+    }
+
+    /**
+     * @internal
+     * @return array<string, \Closure(string): object>
+     */
+    public function &wireDecoders(): array
+    {
+        return $this->wireDecoders;
+    }
+
+    /**
+     * @internal
+     */
+    public function decodeTimestamp(string $bytes, string $class): \DateTimeInterface
+    {
+        [$seconds, $nanos] = Wire::readTimestamp($bytes);
+        return $this->dateTime($seconds, $nanos, $class);
     }
 
     // ------------------------------------------------------------------
@@ -74,39 +191,71 @@ final class Codec
         if ($message instanceof NativeMessage) {
             return $message;
         }
-
-        $nativeClass = $this->nativeClass($message::class);
-        $data = [];
-        foreach (MetadataFactory::forMessage($message::class)->fields as $name => $field) {
-            $value = $message->$name ?? null;
-            if ($value === null) {
-                continue;
-            }
-            if ($field->repeated || $field->isMap()) {
-                $items = [];
-                foreach ($value as $key => $item) {
-                    $items[$field->isMap() ? $this->castKey($field, $key) : \count($items)] = $this->toNativeValue($field, $item);
-                }
-                $data[$field->protoName] = $items;
-            } else {
-                $data[$field->protoName] = $this->toNativeValue($field, $value);
-            }
-        }
-
-        return new $nativeClass($data);
+        return ($this->encoders[$message::class] ??= $this->compileEncoder($message::class))($message);
     }
 
-    private function toNativeValue(FieldMetadata $field, mixed $value): mixed
+    /**
+     * Sinh closure chuyển DTO -> class protoc cho riêng $class, vd với HelloReply:
+     *
+     *   static function (object $m) use ($c, $F): NativeMessage {
+     *       $d = [];
+     *       if (($v = $m->message ?? null) !== null) { $d['message'] = (string) $v; }
+     *       if (($v = $m->repliedAt ?? null) !== null) { $d['replied_at'] = $v instanceof \DateTimeInterface ? ... }
+     *       return new \GrpcStub\Example\V1\HelloReply($d);
+     *   }
+     */
+    private function compileEncoder(string $class): \Closure
     {
+        $nativeClass = '\\' . \ltrim($this->nativeClass($class), '\\');
+        $F = MetadataFactory::forMessage($class)->fields;
+        $c = $this;
+
+        $code = "static function (object \$m) use (\$c, \$F): \\" . NativeMessage::class . " {\n    \$d = [];\n";
+        foreach ($F as $name => $field) {
+            $key = \var_export($field->protoName, true);
+            $ref = \var_export($name, true);
+            $code .= "    if ((\$v = \$m->{$name} ?? null) !== null) {\n";
+            if ($field->isMap()) {
+                $keyExpr = match ($field->keyType) {
+                    Type::String => '(string) $k',
+                    Type::Bool => '(bool) $k',
+                    default => '(int) $k',
+                };
+                $code .= "        \$i = [];\n        foreach (\$v as \$k => \$x) { \$i[$keyExpr] = " . $this->encodeExpr($field, '$x', $ref) . "; }\n"
+                    . "        \$d[$key] = \$i;\n";
+            } elseif ($field->repeated) {
+                $code .= "        \$i = [];\n        foreach (\$v as \$x) { \$i[] = " . $this->encodeExpr($field, '$x', $ref) . "; }\n"
+                    . "        \$d[$key] = \$i;\n";
+            } else {
+                $code .= "        \$d[$key] = " . $this->encodeExpr($field, '$v', $ref) . ";\n";
+            }
+            $code .= "    }\n";
+        }
+        $code .= "    return new $nativeClass(\$d);\n}";
+
+        return eval("return $code;");
+    }
+
+    private function encodeExpr(FieldMetadata $field, string $var, string $ref): string
+    {
+        $fqcn = $field->class !== null ? '\\' . \ltrim($field->class, '\\') : null;
         return match ($field->type) {
-            Type::Message => $this->toNative($this->ensureObject($field, $value)),
-            Type::Enum => $value instanceof \BackedEnum ? $value->value : (int) $value,
-            Type::Timestamp => $this->toTimestamp($value),
-            default => $this->cast($field->type, $value),
+            Type::Message => "\$c->toNative($var instanceof $fqcn ? $var : \$c->ensureObject(\$F[$ref], $var))",
+            Type::Enum => "($var instanceof \\BackedEnum ? {$var}->value : (int) $var)",
+            Type::Timestamp => "\$c->toTimestamp($var)",
+            default => match ($field->type->phpType()) {
+                'int' => "(int) $var",
+                'float' => "(float) $var",
+                'bool' => "(bool) $var",
+                default => "(string) $var",
+            },
         };
     }
 
-    private function ensureObject(FieldMetadata $field, mixed $value): object
+    /**
+     * @internal Dùng bởi encoder được sinh ra.
+     */
+    public function ensureObject(FieldMetadata $field, mixed $value): object
     {
         if ($value instanceof $field->class) {
             return $value;
@@ -119,24 +268,18 @@ final class Codec
         );
     }
 
-    private function toTimestamp(\DateTimeInterface|int|string $value): Timestamp
+    /**
+     * @internal Dùng bởi encoder được sinh ra.
+     */
+    public function toTimestamp(\DateTimeInterface|int|string $value): Timestamp
     {
         if (!$value instanceof \DateTimeInterface) {
             $value = new \DateTimeImmutable(\is_int($value) ? "@$value" : $value);
         }
-        return new Timestamp([
-            'seconds' => $value->getTimestamp(),
-            'nanos' => (int) $value->format('u') * 1000,
-        ]);
-    }
-
-    private function castKey(FieldMetadata $field, int|string $key): int|string|bool
-    {
-        return match ($field->keyType) {
-            Type::String => (string) $key,
-            Type::Bool => (bool) $key,
-            default => (int) $key,
-        };
+        $timestamp = new Timestamp();
+        $timestamp->setSeconds($value->getTimestamp());
+        $timestamp->setNanos((int) $value->format('u') * 1000);
+        return $timestamp;
     }
 
     private function cast(Type $type, mixed $value): mixed
@@ -160,51 +303,86 @@ final class Codec
      */
     public function fromNative(NativeMessage $native, string $class): object
     {
-        $values = [];
-        foreach (MetadataFactory::forMessage($class)->fields as $name => $field) {
-            $camel = self::camel($field->protoName);
-
-            if ($field->isOptional() && !$native->{'has' . $camel}()) {
-                $values[$name] = $field->hasDefault ? $field->default : null;
-                continue;
-            }
-
-            $value = $native->{'get' . $camel}();
-
-            if ($field->isMap()) {
-                $items = [];
-                foreach ($value as $key => $item) {
-                    $items[$key] = $this->fromNativeValue($field, $item);
-                }
-                $values[$name] = $items;
-            } elseif ($field->repeated) {
-                $items = [];
-                foreach ($value as $item) {
-                    $items[] = $this->fromNativeValue($field, $item);
-                }
-                $values[$name] = $items;
-            } elseif ($value === null) {
-                // Message con không được gửi lên.
-                $values[$name] = $field->nullable ? null : $this->emptyValue($field);
-            } else {
-                $values[$name] = $this->fromNativeValue($field, $value);
-            }
-        }
-
-        return self::hydrate($class, $values);
+        return ($this->decoders[$class] ??= $this->compileDecoder($class))($native);
     }
 
-    private function fromNativeValue(FieldMetadata $field, mixed $value): mixed
+    /**
+     * Sinh closure chuyển class protoc -> DTO cho riêng $class. Closure được bind vào scope của DTO
+     * nên gán thẳng được cả property readonly, không cần gọi constructor. Vd với HelloReply:
+     *
+     *   static function (\Google\Protobuf\Internal\Message $n) use ($c, $F, $D, $R, $H): object {
+     *       $o = $R->newInstanceWithoutConstructor();
+     *       $o->message = $n->getMessage();
+     *       $o->repliedAt = ($v = $n->getRepliedAt()) === null ? null : $c->fromTimestamp($v, '...');
+     *       return $o;
+     *   }
+     */
+    private function compileDecoder(string $class): \Closure
     {
+        $F = MetadataFactory::forMessage($class)->fields;
+        $D = [];
+        $H = [];
+        $R = self::$reflections[$class] ??= new \ReflectionClass($class);
+        $c = $this;
+
+        $code = "static function (\\" . NativeMessage::class . " \$n) use (\$c, \$F, \$D, \$R, \$H): object {\n"
+            . "    \$o = \$R->newInstanceWithoutConstructor();\n";
+        foreach ($F as $name => $field) {
+            $ref = \var_export($name, true);
+            $camel = self::camel($field->protoName);
+            $get = "\$n->get$camel()";
+
+            if ($field->isMap() || $field->repeated) {
+                if ($field->type === Type::Message || $field->type === Type::Enum || $field->type === Type::Timestamp) {
+                    $target = $field->isMap() ? '$i[$k]' : '$i[]';
+                    $code .= "    \$i = [];\n    foreach ($get as \$k => \$x) { $target = " . $this->decodeExpr($field, '$x', $ref) . "; }\n";
+                    $expr = '$i';
+                } else {
+                    $expr = "\\iterator_to_array($get, " . ($field->isMap() ? 'true' : 'false') . ')';
+                }
+            } elseif ($field->isOptional()) {
+                if ($field->hasDefault) {
+                    $D[$name] = $field->default;
+                }
+                $fallback = $field->hasDefault ? "\$D[$ref]" : 'null';
+                $expr = "(\$n->has$camel() ? " . $this->decodeExpr($field, $get, $ref) . " : $fallback)";
+            } elseif ($field->type === Type::Message || $field->type === Type::Timestamp) {
+                // Message con không được gửi lên.
+                $empty = $field->nullable ? 'null' : "\$c->emptyValue(\$F[$ref])";
+                $expr = "((\$v = $get) === null ? $empty : " . $this->decodeExpr($field, '$v', $ref) . ")";
+            } else {
+                $expr = $this->decodeExpr($field, $get, $ref);
+            }
+
+            if ($field->declaringClass === $class) {
+                $code .= "    \$o->{$name} = $expr;\n";
+            } else {
+                // Property khai báo ở class cha: gán qua hydrator đúng scope (cần cho readonly).
+                $H[$field->declaringClass] ??= self::hydrator($field->declaringClass);
+                $scope = \var_export($field->declaringClass, true);
+                $code .= "    \$H[$scope](\$o, [$ref => $expr]);\n";
+            }
+        }
+        $code .= "    return \$o;\n}";
+
+        return \Closure::bind(eval("return $code;"), null, $class);
+    }
+
+    private function decodeExpr(FieldMetadata $field, string $var, string $ref): string
+    {
+        $class = $field->class !== null ? \var_export($field->class, true) : null;
         return match ($field->type) {
-            Type::Message => $this->fromNative($value, $field->class),
-            Type::Enum => $this->toEnum($field, (int) $value),
-            Type::Timestamp => $this->fromTimestamp($value, $field->class),
-            default => $value,
+            Type::Message => "\$c->fromNative($var, $class)",
+            Type::Enum => "\$c->toEnum(\$F[$ref], (int) $var)",
+            Type::Timestamp => "\$c->fromTimestamp($var, $class)",
+            default => $var,
         };
     }
 
-    private function emptyValue(FieldMetadata $field): mixed
+    /**
+     * @internal Dùng bởi decoder được sinh ra.
+     */
+    public function emptyValue(FieldMetadata $field): mixed
     {
         return match ($field->type) {
             Type::Message => $this->fromNative(new ($this->nativeClass($field->class))(), $field->class),
@@ -213,7 +391,10 @@ final class Codec
         };
     }
 
-    private function toEnum(FieldMetadata $field, int $value): ?\BackedEnum
+    /**
+     * @internal Dùng bởi decoder được sinh ra.
+     */
+    public function toEnum(FieldMetadata $field, int $value): ?\BackedEnum
     {
         /** @var class-string<\BackedEnum> $enum */
         $enum = $field->class;
@@ -221,16 +402,31 @@ final class Codec
             ?? ($field->hasDefault ? $field->default : ($field->nullable ? null : $enum::cases()[0]));
     }
 
-    private function fromTimestamp(Timestamp $timestamp, string $class): \DateTimeInterface
+    /**
+     * @internal Dùng bởi decoder được sinh ra.
+     */
+    public function fromTimestamp(Timestamp $timestamp, string $class): \DateTimeInterface
+    {
+        return $this->dateTime($timestamp->getSeconds(), $timestamp->getNanos(), $class);
+    }
+
+    private function dateTime(int $seconds, int $nanos, string $class): \DateTimeInterface
     {
         if ($class === \DateTimeInterface::class) {
             $class = \DateTimeImmutable::class;
         }
-        $date = $class::createFromFormat(
-            'U.u',
-            \sprintf('%d.%06d', $timestamp->getSeconds(), \intdiv($timestamp->getNanos(), 1000)),
-        );
-        return $date->setTimezone(new \DateTimeZone(\date_default_timezone_get()));
+        if (\PHP_VERSION_ID >= 80400) {
+            // Nhanh hơn ~10 lần so với parse chuỗi.
+            $date = $class::createFromTimestamp($seconds)->setMicrosecond(\intdiv($nanos, 1000));
+        } else {
+            $date = $class::createFromFormat('U.u', \sprintf('%d.%06d', $seconds, \intdiv($nanos, 1000)));
+        }
+
+        $timezone = \date_default_timezone_get();
+        if (self::$timezone?->getName() !== $timezone) {
+            self::$timezone = new \DateTimeZone($timezone);
+        }
+        return $date->setTimezone(self::$timezone);
     }
 
     /**
@@ -359,7 +555,7 @@ final class Codec
      */
     private static function hydrate(string $class, array $values): object
     {
-        $object = (new \ReflectionClass($class))->newInstanceWithoutConstructor();
+        $object = (self::$reflections[$class] ??= new \ReflectionClass($class))->newInstanceWithoutConstructor();
         $fields = MetadataFactory::forMessage($class)->fields;
 
         $byScope = [];
@@ -368,14 +564,21 @@ final class Codec
         }
 
         foreach ($byScope as $scope => $scopeValues) {
-            $hydrator = self::$hydrators[$scope] ??= \Closure::bind(static function (object $object, array $values): void {
-                foreach ($values as $name => $value) {
-                    $object->$name = $value;
-                }
-            }, null, $scope);
-            $hydrator($object, $scopeValues);
+            self::hydrator($scope)($object, $scopeValues);
         }
 
         return $object;
+    }
+
+    /**
+     * @internal
+     */
+    public static function hydrator(string $scope): \Closure
+    {
+        return self::$hydrators[$scope] ??= \Closure::bind(static function (object $object, array $values): void {
+            foreach ($values as $name => $value) {
+                $object->$name = $value;
+            }
+        }, null, $scope);
     }
 }
