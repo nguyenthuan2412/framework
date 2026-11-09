@@ -86,6 +86,9 @@ abstract class AbstractServer
     {
         try {
             App::service('module.installer')->install();
+            // Build bảng route ngay khi đã đăng ký đủ route của mọi module (dispatcher là singleton,
+            // nếu để request đầu tiên tạo thì có thể chốt bảng route khi install chưa xong).
+            $this->app->get('route.dispatcher');
             \Termwind\render(<<<HTML
                 <div>
                     <div class="text-green font-bold">

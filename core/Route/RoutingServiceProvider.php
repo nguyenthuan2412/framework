@@ -26,11 +26,12 @@ class RoutingServiceProvider extends ServiceProvider
             )
         );
 
-        $this->app->scoped(
+        // Singleton: bảng route chỉ build 1 lần cho mỗi worker. Dispatcher không được giữ
+        // state theo request (pipeline middleware được tạo mới trong handle()).
+        $this->app->singleton(
             'route.dispatcher',
             fn() => new RouteDispatcher(
                 $this->app->get('route.collection'),
-                $this->app->get('stack_middleware'),
                 $this->app->get('middleware.collection'),
                 $this->app->get(VersionResolver::class)
             )

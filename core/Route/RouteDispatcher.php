@@ -24,7 +24,6 @@ class RouteDispatcher extends GroupCountBased
 {
     public function __construct(
         RouteCollection $routeCollection,
-        protected StackMiddleware $stackMiddleware,
         protected MiddlewareCollection $middlewareCollection,
         protected ?VersionResolver $versionResolver = null
     )
@@ -73,7 +72,9 @@ class RouteDispatcher extends GroupCountBased
                 break;
         }
 
-        $response = $this->stackMiddleware
+        // Pipeline mới cho mỗi request: dispatcher là singleton dùng chung giữa các coroutine,
+        // nếu dùng chung pipeline thì passable/pipes của request này có thể bị request khác ghi đè.
+        $response = (new StackMiddleware)
             ->send($request)
             ->through($middlewares)
             ->then($callback);
