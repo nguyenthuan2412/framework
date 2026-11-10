@@ -5,6 +5,9 @@ namespace Ryra\Core\Container;
 use Ryra\Core\Contracts\Container\Container as ContractContainer;
 use Ryra\Core\Container\Exception\ServiceNotFoundException;
 use Ryra\Core\Container\Proxy\ProxyManager;
+use Ryra\Core\Container\AOP\AopProxy;
+use Ryra\Core\Container\AOP\AopProxyManager;
+use Ryra\Core\Container\AOP\AspectCollector;
 use Swoole\Coroutine;
 use ArrayAccess;
 
@@ -13,6 +16,8 @@ class Container implements ContractContainer, ArrayAccess
     private static ?ContractContainer $instance = null;
 
     protected static ?ProxyManager $proxyManager = null;
+
+    protected static ?AopProxyManager $aopProxyManager = null;
 
     /**
      * @var array<string, object>
@@ -62,7 +67,7 @@ class Container implements ContractContainer, ArrayAccess
     public function singleton(string $id, string|callable $callback): void
     {
         if (\is_string($callback)) {
-            $callback = static fn() => new $callback();
+            $callback = static fn() => new (static::resolveClass($callback))();
         }
         $this->bindings[__FUNCTION__][$id] = $callback;
     }
@@ -83,7 +88,7 @@ class Container implements ContractContainer, ArrayAccess
     public function transient(string $id, string|callable $callback): void
     {
         if (\is_string($callback)) {
-            $callback = fn() => new $callback();
+            $callback = static fn() => new (static::resolveClass($callback))();
         }
         $this->bindings[__FUNCTION__][$id] = $callback;
     }
@@ -104,7 +109,7 @@ class Container implements ContractContainer, ArrayAccess
     public function scoped(string $id, string|callable $callback): void
     {
         if (\is_string($callback)) {
-            $callback = fn() => new $callback();
+            $callback = static fn() => new (static::resolveClass($callback))();
         }
         $this->bindings[__FUNCTION__][$id] = $callback;
     }
@@ -255,15 +260,46 @@ class Container implements ContractContainer, ArrayAccess
         return static::$proxyManager;
     }
 
+    /**
+     * Quản lý class AOP (class con sinh sẵn có chèn aspect). null = tắt AOP.
+     */
+    public static function setAopProxyManager(?AopProxyManager $aopProxyManager): void
+    {
+        static::$aopProxyManager = $aopProxyManager;
+    }
+
+    public static function getAopProxyManager(): ?AopProxyManager
+    {
+        return static::$aopProxyManager;
+    }
+
+    /**
+     * Danh sách aspect. Tự bật AOP (eval, không ghi file) nếu chưa có AopProxyManager.
+     */
+    public static function aspects(): AspectCollector
+    {
+        return (static::$aopProxyManager ??= AopProxyManager::create(new AspectCollector()))->getAspects();
+    }
+
+    /**
+     * Class thực sự cần `new`: class AOP nếu có aspect cắt vào, ngược lại là chính nó.
+     */
+    public static function resolveClass(string $class): string
+    {
+        return static::$aopProxyManager?->proxyFor($class) ?? $class;
+    }
+
     public static function make(string $concrete, array $parameters = []): object
     {
+        $aop = static::$aopProxyManager?->proxyFor($concrete);
+
         if (static::$proxyManager && ($proxy = static::$proxyManager->proxyFor($concrete))) {
-            return $proxy::make(static::getInstance(), $parameters);
+            return $proxy::make(static::getInstance(), $parameters, $aop);
         }
 
-        $concrete = new $concrete(...static::getObjectDependencies($concrete, $parameters));
-        static::injectProperties($concrete);
-        return $concrete;
+        $object = new ($aop ?? $concrete)(...static::getObjectDependencies($concrete, $parameters));
+        static::injectProperties($object);
+        return $object;
     }
 
     public static function call(\Closure|array $callback, array $parameters = []): mixed
@@ -336,12 +372,15 @@ class Container implements ContractContainer, ArrayAccess
 
     protected static function injectProperties(object $object): void
     {
-        if (static::$proxyManager && ($proxy = static::$proxyManager->proxyFor($object::class))) {
+        // Object AOP: inject theo class gốc (class con không thấy property private của class cha).
+        $class = $object instanceof AopProxy ? $object::AOP_TARGET : $object::class;
+
+        if (static::$proxyManager && ($proxy = static::$proxyManager->proxyFor($class))) {
             $proxy::inject($object, static::getInstance());
             return;
         }
 
-        $properties = (new \ReflectionObject($object))->getProperties();
+        $properties = (new \ReflectionClass($class))->getProperties();
         if (!empty($properties)) {
             foreach ($properties as $property) {
                 if (

@@ -15,10 +15,12 @@ use Ryra\Core\Container\Inject;
  */
 class ProxyGenerator
 {
+    use ExportsCode;
+
     /**
      * Tăng khi đổi template để mọi proxy cũ bị sinh lại.
      */
-    public const VERSION = '1';
+    public const VERSION = '2';
 
     /**
      * Sinh mã proxy. Trả về null nếu class không hỗ trợ (dùng lại đường Reflection).
@@ -42,9 +44,9 @@ class ProxyGenerator
         $target = '\\' . $class->getName();
         $namespace = ProxyFileLocator::NAMESPACE;
         $makeCode = $make ?? <<<PHP
-            public static function make(\$c, array \$parameters = []): object
+            public static function make(\$c, array \$parameters = [], ?string \$class = null): object
             {
-                return new {$target}();
+                return new (\$class ?? {$target})();
             }
         PHP;
 
@@ -75,9 +77,10 @@ class ProxyGenerator
 
         if ($constructor === null || $constructor->getNumberOfParameters() === 0) {
             return <<<PHP
-                public static function make(\$c, array \$parameters = []): object
+                public static function make(\$c, array \$parameters = [], ?string \$class = null): object
                 {
-                    \$o = \$parameters ? new {$target}(...\\array_values(\$parameters)) : new {$target}();{$injectCall}
+                    \$class ??= {$target}::class;
+                    \$o = \$parameters ? new \$class(...\\array_values(\$parameters)) : new \$class();{$injectCall}
                     return \$o;
                 }
             PHP;
@@ -109,64 +112,16 @@ class ProxyGenerator
         $body = \implode("\n", $lines);
 
         return <<<PHP
-            public static function make(\$c, array \$parameters = []): object
+            public static function make(\$c, array \$parameters = [], ?string \$class = null): object
             {
         {$body}
+                \$class ??= {$target}::class;
                 \$o = \$parameters
-                    ? new {$target}(...\\array_values(\\array_merge([{$named}], \$parameters)))
-                    : new {$target}({$positional});{$injectCall}
+                    ? new \$class(...\\array_values(\\array_merge([{$named}], \$parameters)))
+                    : new \$class({$positional});{$injectCall}
                 return \$o;
             }
         PHP;
-    }
-
-    /**
-     * Mã PHP của giá trị default, hoặc null nếu không biểu diễn được an toàn.
-     */
-    private function defaultValueCode(\ReflectionParameter $param, \ReflectionClass $class): ?string
-    {
-        if (!$param->isDefaultValueAvailable()) {
-            return null;
-        }
-
-        // Hằng số của class: giữ tham chiếu để proxy luôn lấy giá trị mới nhất.
-        // Hằng số global: ghi thẳng giá trị (tên trả về có thể đã gắn namespace dù thực tế là global fallback).
-        if ($param->isDefaultValueConstant() && \str_contains($name = $param->getDefaultValueConstantName(), '::')) {
-            if (\str_starts_with($name, 'self::') || \str_starts_with($name, 'static::')) {
-                $name = $class->getName() . \substr($name, \strpos($name, '::'));
-            } elseif (\str_starts_with($name, 'parent::')) {
-                $name = $class->getParentClass()->getName() . \substr($name, \strpos($name, '::'));
-            }
-            return '\\' . \ltrim($name, '\\');
-        }
-
-        return $this->exportValue($param->getDefaultValue());
-    }
-
-    private function exportValue(mixed $value): ?string
-    {
-        if (\is_null($value) || \is_scalar($value)) {
-            return \var_export($value, true);
-        }
-
-        if ($value instanceof \UnitEnum) {
-            return '\\' . $value::class . '::' . $value->name;
-        }
-
-        if (\is_array($value)) {
-            $items = [];
-            foreach ($value as $k => $v) {
-                $code = $this->exportValue($v);
-                if ($code === null) {
-                    return null;
-                }
-                $items[] = \var_export($k, true) . ' => ' . $code;
-            }
-            return '[' . \implode(', ', $items) . ']';
-        }
-
-        // Object tạo bằng `new` trong default value: không sinh được an toàn.
-        return null;
     }
 
     /**

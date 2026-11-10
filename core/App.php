@@ -4,6 +4,8 @@ namespace Ryra\Core;
 
 use Ryra\Core\Container\Container;
 use Ryra\Core\Container\Proxy\ProxyManager;
+use Ryra\Core\Container\AOP\AopProxyManager;
+use Ryra\Core\Container\AOP\AspectCollector;
 use Closure;
 
 class App extends Container
@@ -15,6 +17,8 @@ class App extends Container
     protected ?Closure $withMiddleware = null;
 
     protected ?Closure $withProviders = null;
+
+    protected ?Closure $withAspects = null;
 
     protected ?Closure $terminateRequest = null;
 
@@ -71,7 +75,13 @@ class App extends Container
         if (\chdir($path)) {
             $this->basePath = $path;
             // Proxy sinh sẵn cho Container::make()/injectProperties(), thay cho Reflection mỗi lần gọi.
-            static::setProxyManager(ProxyManager::create(\join_paths($path, 'storage', 'runtime', 'proxy')));
+            $proxyFolder = \join_paths($path, 'storage', 'runtime', 'proxy');
+            static::setProxyManager(ProxyManager::create($proxyFolder));
+            // Class AOP ghi ra file để opcache/JIT cache được; giữ lại aspect đã đăng ký trước đó (nếu có).
+            static::setAopProxyManager(AopProxyManager::create(
+                static::getAopProxyManager()?->getAspects() ?? new AspectCollector(),
+                $proxyFolder,
+            ));
         }
         return $this;
     }
@@ -192,6 +202,15 @@ class App extends Container
     }
 
     /**
+     * Đăng ký aspect (AOP). Chạy trước khi boot service provider để service tạo ra đều có proxy.
+     */
+    public function withAspects(Closure $callback): static
+    {
+        $this->withAspects = $callback;
+        return $this;
+    }
+
+    /**
      * Khởi tạo console application.
      */
     public function start(): int
@@ -226,6 +245,10 @@ class App extends Container
     {
         $providers = require 'providers.php';
         $providerManager = $this->get('service_provider_manager');
+
+        if (!empty($callback = $this->withAspects)) {
+            $callback(static::aspects());
+        }
 
         if (!empty($callback = $this->withProviders)) {
             $callback($providerManager);

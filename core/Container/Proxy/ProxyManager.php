@@ -80,28 +80,6 @@ class ProxyManager
             return false;
         }
 
-        $folder = $this->locator->getProxyFolder();
-        if (!\is_dir($folder) && !@\mkdir($folder, 0755, true) && !\is_dir($folder)) {
-            return false;
-        }
-
-        // Xoá proxy của phiên bản cũ (class đã bị sửa).
-        foreach (\glob($this->locator->getProxyFilePattern($reflection->getName())) ?: [] as $old) {
-            if ($old !== $file) {
-                @\unlink($old);
-            }
-        }
-
-        // Ghi ra file tạm rồi rename: nhiều worker cùng sinh một proxy cũng không đọc phải file ghi dở.
-        $tmp = $file . '.' . \getmypid() . '.' . \bin2hex(\random_bytes(4)) . '.tmp';
-        if (@\file_put_contents($tmp, $code) === false) {
-            return false;
-        }
-        if (!@\rename($tmp, $file)) {
-            @\unlink($tmp);
-            return \is_file($file);
-        }
-
-        return true;
+        return $this->locator->write($file, $code, $this->locator->getProxyFilePattern($reflection->getName()));
     }
 }

@@ -21,9 +21,13 @@ class ProxyFileLocator
         return $this->proxyFolder;
     }
 
-    public function getProxyClassName(\ReflectionClass $class): string
+    /**
+     * @param string $prefix Phân biệt loại proxy (P = factory, A = AOP).
+     * @param string $extra  Dữ liệu thêm vào hash phiên bản (vd: cấu hình aspect).
+     */
+    public function getProxyClassName(\ReflectionClass $class, string $prefix = 'P', string $extra = ''): string
     {
-        return 'P_' . $this->classHash($class->getName()) . '_' . $this->versionHash($class);
+        return $prefix . '_' . $this->classHash($class->getName()) . '_' . $this->versionHash($class, $extra);
     }
 
     public function getProxyFile(string $proxyClassName): string
@@ -34,9 +38,38 @@ class ProxyFileLocator
     /**
      * Pattern glob của mọi proxy (mọi phiên bản) thuộc class này.
      */
-    public function getProxyFilePattern(string $class): string
+    public function getProxyFilePattern(string $class, string $prefix = 'P'): string
     {
-        return $this->proxyFolder . DIRECTORY_SEPARATOR . 'P_' . $this->classHash($class) . '_*.php';
+        return $this->proxyFolder . DIRECTORY_SEPARATOR . $prefix . '_' . $this->classHash($class) . '_*.php';
+    }
+
+    /**
+     * Ghi file proxy: xoá các phiên bản cũ khớp $oldPattern, ghi ra file tạm rồi rename
+     * để nhiều worker cùng sinh một proxy cũng không đọc phải file ghi dở.
+     */
+    public function write(string $file, string $code, string $oldPattern): bool
+    {
+        $folder = $this->proxyFolder;
+        if (!\is_dir($folder) && !@\mkdir($folder, 0755, true) && !\is_dir($folder)) {
+            return false;
+        }
+
+        foreach (\glob($oldPattern) ?: [] as $old) {
+            if ($old !== $file) {
+                @\unlink($old);
+            }
+        }
+
+        $tmp = $file . '.' . \getmypid() . '.' . \bin2hex(\random_bytes(4)) . '.tmp';
+        if (@\file_put_contents($tmp, $code) === false) {
+            return false;
+        }
+        if (!@\rename($tmp, $file)) {
+            @\unlink($tmp);
+            return \is_file($file);
+        }
+
+        return true;
     }
 
     private function classHash(string $class): string
@@ -44,9 +77,9 @@ class ProxyFileLocator
         return \substr(\hash('xxh128', $class), 0, 16);
     }
 
-    private function versionHash(\ReflectionClass $class): string
+    private function versionHash(\ReflectionClass $class, string $extra = ''): string
     {
-        $parts = [ProxyGenerator::VERSION];
+        $parts = [ProxyGenerator::VERSION, $extra];
         foreach ($this->sourceFiles($class) as $file) {
             $parts[] = $file . ':' . (@\filemtime($file) ?: 0);
         }
