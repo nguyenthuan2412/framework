@@ -128,4 +128,51 @@ class WireCodecTest extends TestCase
         // Bộ đếm độ sâu được trả về đúng sau lỗi.
         $this->assertEquals($tree, $codec->decode($codec->encode($tree), WireNode::class));
     }
+
+    public function test_cache_dir_writes_generated_code_to_files(): void
+    {
+        $dir = \sys_get_temp_dir() . '/ryra-grpc-test-' . \bin2hex(\random_bytes(4));
+        try {
+            $user = new User(
+                id: 7, name: 'x', email: 'e', status: \Ryra\Core\Grpc\Tests\Fixtures\UserStatus::Banned,
+                tags: ['a'], counters: ['k' => 1], address: new Address('s', 'c'), history: [new Address('h')],
+                createdAt: new \DateTimeImmutable('@1767323045'),
+            );
+            $expected = (new Codec())->encode($user);
+
+            $codec = new Codec($dir);
+            $bytes = $codec->encode($user);
+            $this->assertSame($expected, $bytes);
+            $decoded = $codec->decode($bytes, User::class);
+            $this->assertSame($user->createdAt->getTimestamp(), $decoded->createdAt->getTimestamp());
+            $decoded->createdAt = $user->createdAt;
+            $this->assertEquals($user, $decoded);
+
+            // Encoder + decoder cho User và Address.
+            $files = \glob("$dir/*.php");
+            $this->assertCount(4, $files);
+
+            // Worker khác dùng lại file đã sinh.
+            $this->assertEquals($decoded, (new Codec($dir))->decode($bytes, User::class));
+            $this->assertCount(4, \glob("$dir/*.php"));
+        } finally {
+            foreach (\glob("$dir/*") ?: [] as $file) {
+                \unlink($file);
+            }
+            @\rmdir($dir);
+        }
+    }
+
+    public function test_cache_dir_not_writable_falls_back_to_eval(): void
+    {
+        $file = \tempnam(\sys_get_temp_dir(), 'ryra-grpc');
+        try {
+            // Đường dẫn nằm dưới một file thường => không tạo được thư mục.
+            $codec = new Codec($file . '/sub');
+            $node = new WireNode('a', new WireNode('b'));
+            $this->assertEquals($node, $codec->decode($codec->encode($node), WireNode::class));
+        } finally {
+            \unlink($file);
+        }
+    }
 }

@@ -4,7 +4,7 @@ Viết service và message bằng **class PHP + attribute**, framework tự sinh
 
 Không cần `protoc`, `google/protobuf` hay ext `protobuf`:
 
-- Encode/decode: framework tự đọc/ghi wire format protobuf. Lần đầu gặp một class `#[Message]`, framework sinh sẵn encoder/decoder riêng cho class đó (đọc/ghi thẳng property ⇄ bytes) và cache trong worker.
+- Encode/decode: framework tự đọc/ghi wire format protobuf. Lần đầu gặp một class `#[Message]`, framework sinh sẵn encoder/decoder riêng cho class đó (đọc/ghi thẳng property ⇄ bytes), ghi ra `storage/runtime/grpc/` và cache trong worker. Code nằm trong file thì OPcache/JIT mới tối ưu được, nên production cần bật `opcache.enable_cli=1` và JIT (Swoole chạy bằng CLI). Sửa class thì file cũ tự được sinh lại.
 - Transport: HTTP/2 của Swoole. Server gRPC chạy **chung port** với HTTP server.
 
 ```

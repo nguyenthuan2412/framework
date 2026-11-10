@@ -17,7 +17,7 @@ class GrpcServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
-        $this->app->singleton('grpc.codec', fn () => new Codec());
+        $this->app->singleton('grpc.codec', fn () => new Codec(base_path(\join_paths('storage', 'runtime', 'grpc'))));
         $this->app->alias('grpc.codec', Codec::class);
 
         $this->app->singleton('grpc.registry', function () {

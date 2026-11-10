@@ -35,6 +35,12 @@ final class Codec
     /** Độ sâu decode hiện tại của message đệ quy (decode chạy đồng bộ, không yield giữa chừng). */
     private int $depth = 0;
 
+    /**
+     * @param string|null $cacheDir Thư mục ghi code encoder/decoder sinh ra (để OPcache/JIT tối ưu được).
+     *                              null: chạy code qua eval(), không ghi file (chậm hơn ~25%).
+     */
+    public function __construct(private readonly ?string $cacheDir = null) {}
+
     public function encode(object $message): string
     {
         return ($this->wireEncoders[$message::class] ??= $this->wire()->encoder($message::class))($message);
@@ -53,6 +59,14 @@ final class Codec
     // ------------------------------------------------------------------
     // Dùng bởi code do WireCompiler sinh ra
     // ------------------------------------------------------------------
+
+    /**
+     * @internal
+     */
+    public function cacheDir(): ?string
+    {
+        return $this->cacheDir;
+    }
 
     private function wire(): WireCompiler
     {
