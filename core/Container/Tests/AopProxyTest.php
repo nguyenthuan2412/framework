@@ -130,6 +130,43 @@ final class AopTestFinalService
     }
 }
 
+enum AopTestStatus: string
+{
+    case Active = 'active';
+    case Draft = 'draft';
+}
+
+#[\Attribute(\Attribute::TARGET_PARAMETER)]
+class AopTestParamTag
+{
+    public function __construct(public string $value, public array $options = []) {}
+}
+
+class AopTestController
+{
+    #[AopTestLogged]
+    public function show(\Ryra\Core\Http\Request $request, string $slug, AopTestStatus $status): array
+    {
+        return [$request, $slug, $status];
+    }
+
+    #[AopTestLogged]
+    public function tagged(#[AopTestParamTag('x', options: ['a' => AopTestStatus::Draft])] int $id = 1): int
+    {
+        return $id;
+    }
+}
+
+class AopTestExposedDispatcher extends \Ryra\Core\Route\RouteDispatcher
+{
+    public function __construct() {}
+
+    public function params(object $controller, string $method, \Ryra\Core\Http\Request $request): array
+    {
+        return $this->getParamMethod($controller, $method, $request);
+    }
+}
+
 // ---------------------------------------------------------------------------
 
 class AopProxyTest extends TestCase
@@ -257,5 +294,66 @@ class AopProxyTest extends TestCase
         $this->assertNull($o->self());
         $this->assertCount(1, \glob($this->proxyDir . '/A_*.php'));
         $this->assertNotEmpty(\glob($this->proxyDir . '/P_*.php'));
+    }
+
+    public function test_app_call_with_class_string_goes_through_proxy(): void
+    {
+        Container::aspects()->add(AopTestUpperAspect::class);
+
+        $this->assertSame('Hi ANN', Container::call([AopTestService::class, 'greet'], ['ann']));
+        $this->assertSame(['upper'], AopTestLog::$lines);
+    }
+
+    public function test_proxy_keeps_method_and_parameter_attributes(): void
+    {
+        Container::aspects()->add(AopTestAttributeAspect::class);
+        $o = Container::make(AopTestController::class);
+
+        $method = new \ReflectionMethod($o, 'tagged');
+        $this->assertSame(\get_class($o), $method->getDeclaringClass()->getName());
+        $this->assertCount(1, $method->getAttributes(AopTestLogged::class));
+
+        $tag = $method->getParameters()[0]->getAttributes(AopTestParamTag::class)[0]->newInstance();
+        $this->assertSame('x', $tag->value);
+        $this->assertSame(['a' => AopTestStatus::Draft], $tag->options);
+        $this->assertSame(1, $o->tagged());
+    }
+
+    public function test_route_dispatcher_resolves_params_for_proxied_controller(): void
+    {
+        Container::aspects()->add(AopTestAttributeAspect::class);
+        $controller = Container::make(AopTestController::class);
+        $this->assertInstanceOf(AopProxy::class, $controller);
+
+        $request = (new \ReflectionClass(\Ryra\Core\Http\Request::class))->newInstanceWithoutConstructor();
+        $result = null;
+        \Swoole\Coroutine\run(function () use ($controller, $request, &$result) {
+            \Ryra\Core\Context\Context::put('__route.params', ['slug' => 'hello', 'status' => 'active']);
+            $dispatcher = new AopTestExposedDispatcher();
+            $result = [
+                $controller->show(...$dispatcher->params($controller, 'show', $request)),
+                // Lần 2 lấy từ cache.
+                $dispatcher->params($controller, 'show', $request),
+            ];
+        });
+
+        $this->assertSame([$request, 'hello', AopTestStatus::Active], $result[0]);
+        $this->assertSame([$request, 'hello', AopTestStatus::Active], $result[1]);
+        $this->assertSame(['attr:' . AopTestController::class . '::show'], AopTestLog::$lines);
+    }
+
+    public function test_warm_up_generates_proxies_before_first_make(): void
+    {
+        $this->proxyDir = \sys_get_temp_dir() . '/ryra-aop-test-' . \bin2hex(\random_bytes(4));
+        Container::setProxyManager(ProxyManager::create($this->proxyDir));
+        $aspects = (new AspectCollector())->add(AopTestShortCircuitAspect::class, [AopTestController::class . '::show']);
+        Container::setAopProxyManager(AopProxyManager::create($aspects, $this->proxyDir));
+
+        Container::warmUp(AopTestController::class);
+
+        $this->assertCount(1, \glob($this->proxyDir . '/A_*.php'));
+        $this->assertCount(1, \glob($this->proxyDir . '/P_*.php'));
+        $this->assertInstanceOf(AopProxy::class, Container::make(AopTestController::class));
+        $this->assertCount(1, \glob($this->proxyDir . '/P_*.php'));
     }
 }

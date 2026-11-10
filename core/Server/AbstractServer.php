@@ -84,11 +84,16 @@ abstract class AbstractServer
     #[Event('WorkerStart')]
     public function onWorkerStart(SwooleServer $server, int $workerId): void
     {
+        // Tắt hook coroutine trong lúc khởi động worker. Nếu không, IO bị hook (exec "find" khi quét
+        // module, đọc file...) sẽ nhường CPU cho event loop và worker nhận request khi bảng route
+        // còn rỗng -> trả 404 hàng loạt mỗi lần worker (re)start.
+        $hookFlags = \Swoole\Runtime::getHookFlags();
+        \Swoole\Runtime::setHookFlags(0);
         try {
             App::service('module.installer')->install();
             // Build bảng route ngay khi đã đăng ký đủ route của mọi module (dispatcher là singleton,
             // nếu để request đầu tiên tạo thì có thể chốt bảng route khi install chưa xong).
-            $this->app->get('route.dispatcher');
+            $this->app->get('route.dispatcher')->warmUp($this->app->get('route.collection'));
             \Termwind\render(<<<HTML
                 <div>
                     <div class="text-green font-bold">
@@ -98,6 +103,8 @@ abstract class AbstractServer
             HTML);
         } catch (\Throwable $th) {
             CliErrorRenderer::render($th);
+        } finally {
+            \Swoole\Runtime::setHookFlags($hookFlags);
         }
     }
 

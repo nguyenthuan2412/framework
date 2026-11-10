@@ -67,6 +67,23 @@ class RouteCollection extends RouteCollector implements RouteCollectionInterfade
         }
     }
 
+    /**
+     * Mọi route đã đăng ký (gồm tất cả version).
+     *
+     * @return Route[]
+     */
+    public function getRoutes(): array
+    {
+        $routes = [];
+        foreach ($this->versionedRoutes as $versioned) {
+            foreach ($versioned->all() as $route) {
+                $routes[] = $route;
+            }
+        }
+
+        return $routes;
+    }
+
     public function getUrl(string $name, array $params = [], bool $absolute = true, string|int|null $version = null): ?string
     {
         if (isset($this->collection[$name])) {

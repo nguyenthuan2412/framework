@@ -16,8 +16,29 @@ class ResponseHeaderBag extends HeaderBag
     protected array $cookies = [];
     protected array $headerNames = [];
 
+    /**
+     * Trạng thái mặc định (chưa gồm Date) của một bag rỗng, tính một lần mỗi worker.
+     * Đường chậm (set Cache-Control rỗng -> parse + compute cache-control bằng regex) cho ra
+     * cùng một kết quả với mọi response, nên chỉ cần chạy một lần rồi chép lại.
+     *
+     * @var array{0: array, 1: array, 2: array, 3: array}|null
+     */
+    private static ?array $emptyState = null;
+
+    private static int $dateTime = 0;
+
+    private static string $date = '';
+
     public function __construct(array $headers = [])
     {
+        if ($headers === []) {
+            [$this->headers, $this->headerNames, $this->computedCacheControl, $this->cacheControl]
+                = self::$emptyState ??= self::buildEmptyState();
+            $this->headers['date'] = [self::httpDate()];
+            $this->headerNames['date'] = 'date';
+            return;
+        }
+
         parent::__construct($headers);
 
         if (!isset($this->headers['cache-control'])) {
@@ -254,6 +275,31 @@ class ResponseHeaderBag extends HeaderBag
 
     private function initDate(): void
     {
-        $this->set('date', gmdate('D, d M Y H:i:s').' GMT');
+        $this->set('date', self::httpDate());
+    }
+
+    /**
+     * Header Date theo RFC 7231, cache theo giây (gmdate() mỗi response là thừa).
+     */
+    private static function httpDate(): string
+    {
+        $now = \time();
+        if ($now !== self::$dateTime) {
+            self::$dateTime = $now;
+            self::$date = \gmdate('D, d M Y H:i:s', $now) . ' GMT';
+        }
+
+        return self::$date;
+    }
+
+    /**
+     * Chạy đường chậm đúng như constructor gốc trên một bag rỗng, lấy trạng thái (trừ Date).
+     */
+    private static function buildEmptyState(): array
+    {
+        $bag = (new \ReflectionClass(self::class))->newInstanceWithoutConstructor();
+        $bag->set('Cache-Control', '');
+
+        return [$bag->headers, $bag->headerNames, $bag->computedCacheControl, $bag->cacheControl];
     }
 }

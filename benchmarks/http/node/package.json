@@ -1,9 +1,0 @@
-{
-  "name": "ryra-bench-node",
-  "private": true,
-  "dependencies": {
-    "express": "^5",
-    "fastify": "^5",
-    "mysql2": "^3"
-  }
-}

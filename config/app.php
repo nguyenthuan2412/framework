@@ -108,7 +108,7 @@ return [
     */
 
     'swoole' => [
-        'default' => 'websocket',
+        'default' => 'http',
 
         'server' => [
             'http' => [
@@ -132,7 +132,7 @@ return [
                     Constant::OPTION_OPEN_TCP_NODELAY => true,
                     Constant::OPTION_MAX_COROUTINE => 100000,
                     Constant::OPTION_OPEN_HTTP2_PROTOCOL => true,
-                    Constant::OPTION_MAX_REQUEST => 100000,
+                    Constant::OPTION_MAX_REQUEST => 0,
                     Constant::OPTION_SOCKET_BUFFER_SIZE => 2 * 1024 * 1024,
                     Constant::OPTION_BUFFER_OUTPUT_SIZE => 2 * 1024 * 1024,
                     // Constant::OPTION_TASK_WORKER_NUM => 2,
@@ -161,7 +161,7 @@ return [
                     Constant::OPTION_OPEN_TCP_NODELAY => true,
                     Constant::OPTION_MAX_COROUTINE => 100000,
                     Constant::OPTION_OPEN_HTTP2_PROTOCOL => true,
-                    Constant::OPTION_MAX_REQUEST => 100000,
+                    Constant::OPTION_MAX_REQUEST => 0,
                     Constant::OPTION_SOCKET_BUFFER_SIZE => 2 * 1024 * 1024,
                     Constant::OPTION_BUFFER_OUTPUT_SIZE => 2 * 1024 * 1024,
                     // Constant::OPTION_TASK_WORKER_NUM => 2,

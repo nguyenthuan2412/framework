@@ -24,7 +24,7 @@ class AopProxyGenerator
 {
     use ExportsCode;
 
-    public const VERSION = '1';
+    public const VERSION = '2';
 
     /**
      * Method nào bị cắt và bởi aspect nào. Rỗng nếu class không cần proxy.
@@ -132,7 +132,11 @@ class AopProxyGenerator
             $name = $param->getName();
             $type = $this->typeCode($param->getType(), $scope);
             $ref = $param->isPassedByReference() ? '&' : '';
-            $code = ($type !== '' ? $type . ' ' : '') . $ref;
+            $attributes = $this->attributesCode($param->getAttributes());
+            if ($attributes === null) {
+                return null;
+            }
+            $code = $attributes . ($type !== '' ? $type . ' ' : '') . $ref;
 
             if ($param->isVariadic()) {
                 if ($ref !== '') {
@@ -159,6 +163,14 @@ class AopProxyGenerator
         $returnType = $this->typeCode($method->getReturnType(), $scope);
         $isVoid = \in_array(\strtolower($returnType), ['void', 'never'], true);
 
+        // Giữ attribute của method (route, middleware, pointcut theo attribute...) để code đọc metadata
+        // qua Reflection trên object proxy vẫn thấy như class gốc.
+        $methodAttributes = $this->attributesCode($method->getAttributes());
+        if ($methodAttributes === null) {
+            return null;
+        }
+        $methodAttributes = $methodAttributes !== '' ? \rtrim($methodAttributes) . "\n    " : '';
+
         $visibility = $method->isProtected() ? 'protected' : 'public';
         $methodName = $method->getName();
         $signature = \implode(', ', $params);
@@ -172,7 +184,7 @@ class AopProxyGenerator
         $joinPoint = '\\' . ProceedingJoinPoint::class;
 
         return <<<PHP
-            {$visibility} function {$methodName}({$signature}){$returnCode}
+            {$methodAttributes}{$visibility} function {$methodName}({$signature}){$returnCode}
             {
                 {$prefix}{$joinPoint}::run(\$this, {$classCode}, {$methodCode}, {$argumentsCode}, fn(array \$a) => parent::{$methodName}({$callCode}), {$aspectsCode});
             }

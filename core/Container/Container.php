@@ -289,6 +289,17 @@ class Container implements ContractContainer, ArrayAccess
         return static::$aopProxyManager?->proxyFor($class) ?? $class;
     }
 
+    /**
+     * Sinh/nạp sẵn proxy (factory + AOP) của class, để lần make() đầu tiên không phải dùng
+     * Reflection hay đọc file. Nên gọi lúc worker khởi động.
+     */
+    public static function warmUp(string $class): void
+    {
+        // make()/injectProperties() luôn tra factory proxy theo class gốc, kể cả khi có class AOP.
+        static::$aopProxyManager?->proxyFor($class);
+        static::$proxyManager?->proxyFor($class);
+    }
+
     public static function make(string $concrete, array $parameters = []): object
     {
         $aop = static::$aopProxyManager?->proxyFor($concrete);

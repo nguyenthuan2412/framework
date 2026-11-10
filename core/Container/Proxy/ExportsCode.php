@@ -58,6 +58,34 @@ trait ExportsCode
     }
 
     /**
+     * Mã PHP của danh sách attribute (vd: "#[\A('x'), \B(name: 1)] "), để class sinh ra giữ nguyên
+     * metadata của class gốc. null nếu có tham số không export được (object tạo bằng `new`).
+     *
+     * @param \ReflectionAttribute[] $attributes
+     */
+    protected function attributesCode(array $attributes): ?string
+    {
+        if ($attributes === []) {
+            return '';
+        }
+
+        $items = [];
+        foreach ($attributes as $attribute) {
+            $args = [];
+            foreach ($attribute->getArguments() as $key => $value) {
+                $code = $this->exportValue($value);
+                if ($code === null) {
+                    return null;
+                }
+                $args[] = \is_string($key) ? "{$key}: {$code}" : $code;
+            }
+            $items[] = '\\' . $attribute->getName() . ($args ? '(' . \implode(', ', $args) . ')' : '');
+        }
+
+        return '#[' . \implode(', ', $items) . '] ';
+    }
+
+    /**
      * Mã PHP của một type khai báo. self/parent được đổi sang tên class tuyệt đối
      * (vì trong class con sinh ra, self sẽ trỏ sang proxy).
      */
