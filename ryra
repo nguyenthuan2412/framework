@@ -1,13 +1,11 @@
 <?php
 
-$_SERVER['COLLISION_PRINTER'] = 'DefaultPrinter';
-
 use Ryra\Core\Container\ServiceProviderManager;
 use Ryra\Core\Middleware\ConvertEmptyStringsToNull;
 use Ryra\Core\Middleware\MiddlewareCollection;
 use Ryra\Core\Middleware\TrimStrings;
-use Ryra\Core\Http\Middleware\HandleException;
 use Ryra\Core\Middleware\HandleCors;
+use Ryra\Core\Http\Middleware\HandleException;
 use Ryra\Core\App;
 
 require __DIR__ . '/core/constants.php';
