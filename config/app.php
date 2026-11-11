@@ -122,12 +122,13 @@ return [
                 'configs' => [
                     Constant::OPTION_HOOK_FLAGS => SWOOLE_HOOK_ALL,
                     Constant::OPTION_LOG_FILE => storage_path('/vietiso/logs/swoole.log'),
-                    Constant::OPTION_LOG_LEVEL => SWOOLE_LOG_DEBUG,
+                    Constant::OPTION_LOG_LEVEL => SWOOLE_LOG_WARNING,
                     Constant::OPTION_DOCUMENT_ROOT => join_paths(App::root(), 'storage'),
                     Constant::OPTION_ENABLE_STATIC_HANDLER => true,
                     Constant::OPTION_STATIC_HANDLER_LOCATIONS => ['/public'],
                     Constant::OPTION_ENABLE_COROUTINE => true,
-                    // Constant::OPTION_WORKER_NUM => swoole_cpu_num(),
+                    Constant::OPTION_WORKER_NUM => swoole_cpu_num(),
+                    Constant::OPTION_ENABLE_REUSE_PORT => true,
                     Constant::OPTION_PID_FILE => storage_path('/vietiso/app.pid'),
                     Constant::OPTION_OPEN_TCP_NODELAY => true,
                     Constant::OPTION_MAX_COROUTINE => 100000,
@@ -135,7 +136,6 @@ return [
                     Constant::OPTION_MAX_REQUEST => 0,
                     Constant::OPTION_SOCKET_BUFFER_SIZE => 2 * 1024 * 1024,
                     Constant::OPTION_BUFFER_OUTPUT_SIZE => 2 * 1024 * 1024,
-                    // Constant::OPTION_TASK_WORKER_NUM => 2,
                     Constant::OPTION_PACKAGE_MAX_LENGTH => 64 * 1024 * 1024, // Tối đa upload 64MB
                 ],
             ],
@@ -151,12 +151,13 @@ return [
                 'configs' => [
                     Constant::OPTION_HOOK_FLAGS => SWOOLE_HOOK_ALL,
                     Constant::OPTION_LOG_FILE => storage_path('/vietiso/logs/swoole.log'),
-                    Constant::OPTION_LOG_LEVEL => SWOOLE_LOG_DEBUG,
+                    Constant::OPTION_LOG_LEVEL => SWOOLE_LOG_WARNING,
                     Constant::OPTION_DOCUMENT_ROOT => join_paths(App::root(), 'storage'),
                     Constant::OPTION_ENABLE_STATIC_HANDLER => true,
                     Constant::OPTION_STATIC_HANDLER_LOCATIONS => ['/public'],
                     Constant::OPTION_ENABLE_COROUTINE => true,
-                    // Constant::OPTION_WORKER_NUM => 2,
+                    Constant::OPTION_WORKER_NUM => swoole_cpu_num(),
+                    Constant::OPTION_ENABLE_REUSE_PORT => true,
                     Constant::OPTION_PID_FILE => storage_path('/vietiso/app.pid'),
                     Constant::OPTION_OPEN_TCP_NODELAY => true,
                     Constant::OPTION_MAX_COROUTINE => 100000,
@@ -164,7 +165,6 @@ return [
                     Constant::OPTION_MAX_REQUEST => 0,
                     Constant::OPTION_SOCKET_BUFFER_SIZE => 2 * 1024 * 1024,
                     Constant::OPTION_BUFFER_OUTPUT_SIZE => 2 * 1024 * 1024,
-                    // Constant::OPTION_TASK_WORKER_NUM => 2,
                     Constant::OPTION_PACKAGE_MAX_LENGTH => 64 * 1024 * 1024, // Tối đa upload 64MB
                 ],
             ]

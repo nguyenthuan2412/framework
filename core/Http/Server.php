@@ -60,7 +60,7 @@ class Server extends AbstractServer
     public function terminateRequest(): void
     {
         $terminateRequest = $this->app->getTerminateRequest();
-        if (!empty($terminateRequest)) {
+        if ($terminateRequest !== null) {
             $terminateRequest($this->app);
         }
         $this->app->forgetScopedInstances();

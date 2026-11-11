@@ -20,19 +20,40 @@ class Request
 
     protected string $protocol;
 
-    public readonly HeaderBag $headers;
+    // Các bag được tạo lazy ở lần truy cập đầu tiên: phần lớn request không đụng tới cookie/files/body,
+    // nên không phải tạo sẵn 6 object cho mỗi request. Property chỉ có get hook nên vẫn chỉ đọc từ bên ngoài.
+    private ?HeaderBag $headersBag = null;
+    private ?InputBag $cookieBag = null;
+    private ?InputBag $queryBag = null;
+    private ?ServerBag $serverBag = null;
+    private ?InputBag $requestBag = null;
+    private ?FileBag $filesBag = null;
 
-    public readonly InputBag $cookie;
+    public HeaderBag $headers {
+        get => $this->headersBag ??= HeaderBag::fromSwoole($this->swooleRequest?->header ?? []);
+    }
 
-    public readonly InputBag $query;
+    public InputBag $cookie {
+        get => $this->cookieBag ??= new InputBag($this->swooleRequest?->cookie ?? []);
+    }
 
-    public readonly ServerBag $server;
+    public InputBag $query {
+        get => $this->queryBag ??= new InputBag($this->swooleRequest?->get ?? []);
+    }
 
-    public readonly InputBag $request;
+    public ServerBag $server {
+        get => $this->serverBag ??= new ServerBag($this->swooleRequest?->server ?? []);
+    }
 
-    protected string $rawContent;
+    public InputBag $request {
+        get => $this->requestBag ??= new InputBag($this->parseBody());
+    }
 
-    public readonly FileBag $files;
+    public FileBag $files {
+        get => $this->filesBag ??= new FileBag($this->swooleRequest?->files ?? []);
+    }
+
+    protected string $rawContent = '';
 
     private ?Session $session = null;
 
@@ -92,7 +113,7 @@ class Request
         self::HEADER_X_FORWARDED_PORT => 'host',
     ];
 
-    private ?\Swoole\Http\Request $swooleRequest;
+    private ?\Swoole\Http\Request $swooleRequest = null;
 
     public function getSwooleRequest(): ?\Swoole\Http\Request
     {
@@ -105,19 +126,47 @@ class Request
         $server = $swooleRequest->server;
         $this->fd = $swooleRequest->fd;
         $this->method = $server['request_method'] ?? 'GET';
-        $this->headers = new HeaderBag($swooleRequest->header ?? []);
-        $this->protocol = isset($server['server_protocol']) ? $server['server_protocol'] : 'HTTP/1.1';
-        $this->cookie = new InputBag($swooleRequest->cookie ?? []);
-        $this->query = new InputBag($swooleRequest->get ?? []);
-        $this->server = new ServerBag($swooleRequest->server ?? []);
-        $request = $swooleRequest->post ?? [];
+        $this->protocol = $server['server_protocol'] ?? 'HTTP/1.1';
+    }
 
-        $this->rawContent = $swooleRequest->rawContent();
-        if ($this->header('content-type') === 'application/json' && json_validate($this->rawContent)) {
-            $request = array_merge($request, json_decode($this->rawContent, true));
+    /**
+     * Dữ liệu body: form post, gộp thêm JSON nếu content-type là application/json.
+     */
+    private function parseBody(): array
+    {
+        $request = $this->swooleRequest?->post ?? [];
+
+        if ($this->swooleRequest !== null && $this->header('content-type') === 'application/json') {
+            $this->rawContent = (string) $this->swooleRequest->rawContent();
+            if ($this->rawContent !== '' && json_validate($this->rawContent)) {
+                $request = array_merge($request, json_decode($this->rawContent, true));
+            }
         }
-        $this->request = new InputBag($request);
-        $this->files = new FileBag($swooleRequest->files ?? []);
+
+        return $request;
+    }
+
+    /**
+     * Có query string không, kiểm tra mà không phải tạo bag.
+     */
+    public function hasQueryInput(): bool
+    {
+        return $this->queryBag !== null
+            ? $this->queryBag->count() > 0
+            : !empty($this->swooleRequest?->get);
+    }
+
+    /**
+     * Có dữ liệu body (form hoặc JSON) không, kiểm tra mà không phải tạo bag.
+     */
+    public function hasBodyInput(): bool
+    {
+        if ($this->requestBag !== null) {
+            return $this->requestBag->count() > 0;
+        }
+
+        return !empty($this->swooleRequest?->post)
+            || ($this->swooleRequest?->header['content-type'] ?? null) === 'application/json';
     }
 
     public function setSession(Session $session): void

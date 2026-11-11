@@ -20,6 +20,23 @@ class HeaderBag implements \IteratorAggregate, \Countable, \Stringable
     }
 
     /**
+     * Tạo nhanh từ header của Swoole (mỗi key một giá trị): gán thẳng, không đi qua set() cho từng header.
+     */
+    public static function fromSwoole(array $headers): self
+    {
+        $bag = new self();
+        foreach ($headers as $key => $value) {
+            $bag->headers[strtr((string) $key, self::UPPER, self::LOWER)] = \is_array($value) ? array_values($value) : [$value];
+        }
+
+        if (isset($bag->headers['cache-control'])) {
+            $bag->cacheControl = $bag->parseCacheControl(implode(', ', $bag->headers['cache-control']));
+        }
+
+        return $bag;
+    }
+
+    /**
      * Returns the headers as a string.
      */
     public function __toString(): string

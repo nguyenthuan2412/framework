@@ -8,12 +8,19 @@ class TransformsRequest
 {
     public function handle(Request $request, \Closure $next): mixed
     {
-        foreach ($request->query as $key => $value) {
-            $request->query->set($key, $this->transform($key, $value));
+        // Kiểm tra trước để request không có input thì không phải tạo bag (bag được tạo lazy).
+        if ($request->hasQueryInput()) {
+            $query = $request->query;
+            foreach ($query as $key => $value) {
+                $query->set($key, $this->transform($key, $value));
+            }
         }
 
-        foreach ($request->request as $key => $value) {
-            $request->request->set($key, $this->transform($key, $value));
+        if ($request->hasBodyInput()) {
+            $body = $request->request;
+            foreach ($body as $key => $value) {
+                $body->set($key, $this->transform($key, $value));
+            }
         }
 
         return $next($request);
